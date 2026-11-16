@@ -6,8 +6,21 @@ import {
   upsertPlayerEntry,
   getAllTournamentsEnriched,
 } from '@/db';
-import { resolveBelgianLocation } from '@/lib/belgium-geo';
+import {
+  resolveBelgianLocation,
+  getBelgianAgeCategory,
+} from '@/lib/belgium-geo';
 import { lookupChessResultsTnr } from '@/lib/scrapers/chessResults';
+import {
+  lookupFederationPlayerProfile,
+  BELGIAN_CLUBS_BY_MATRICULE,
+} from '@/lib/scrapers/frbe';
+
+function parseRating(value: unknown, fallback: number): number {
+  if (value === undefined || value === null || value === '') return fallback;
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? Math.round(num) : fallback;
+}
 
 export async function GET() {
   const profile = getPlayerProfile();
@@ -18,20 +31,53 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
+    const existing = getPlayerProfile();
+
+    const postalInput = String(
+      body.homePostalCode ?? existing.homePostalCode ?? '1000'
+    ).trim();
+    const cityInput = String(body.homeCity ?? existing.homeCity ?? '').trim();
+
+    // If postal code changed, resolve primarily by postal code; otherwise allow city or postal code
     const loc = resolveBelgianLocation(
-      body.homePostalCode || body.homeCity || '1000'
+      postalInput || cityInput || '1000',
+      cityInput
     );
 
+    const clubMatricule = String(
+      body.clubMatricule ?? existing.clubMatricule ?? '201'
+    ).trim();
+    let clubName = String(body.clubName ?? existing.clubName ?? '').trim();
+    if (
+      clubMatricule !== existing.clubMatricule &&
+      BELGIAN_CLUBS_BY_MATRICULE[clubMatricule] &&
+      (!body.clubName || body.clubName === existing.clubName)
+    ) {
+      clubName = BELGIAN_CLUBS_BY_MATRICULE[clubMatricule].clubName;
+    }
+
+    const birthYearNum = Number(body.birthYear);
+    const birthYear =
+      Number.isFinite(birthYearNum) && birthYearNum >= 1920 && birthYearNum <= 2025
+        ? Math.round(birthYearNum)
+        : existing.birthYear;
+
     const updated = updatePlayerProfile({
-      fullName: body.fullName,
-      birthYear: Number(body.birthYear) || 2017,
-      belgianMatricule: body.belgianMatricule,
-      fideId: body.fideId,
-      clubName: body.clubName,
-      belgianElo: Number(body.belgianElo) || 1342,
-      fideStandardElo: Number(body.fideStandardElo) || 1418,
-      fideRapidElo: Number(body.fideRapidElo) || 1455,
-      fideBlitzElo: Number(body.fideBlitzElo) || 1390,
+      fullName: String(body.fullName || existing.fullName).trim(),
+      birthYear,
+      belgianMatricule: String(
+        body.belgianMatricule ?? existing.belgianMatricule
+      ).trim(),
+      fideId: String(body.fideId ?? existing.fideId).trim(),
+      clubName: clubName || existing.clubName,
+      clubMatricule: clubMatricule || existing.clubMatricule,
+      belgianElo: parseRating(body.belgianElo, existing.belgianElo),
+      fideStandardElo: parseRating(
+        body.fideStandardElo,
+        existing.fideStandardElo
+      ),
+      fideRapidElo: parseRating(body.fideRapidElo, existing.fideRapidElo),
+      fideBlitzElo: parseRating(body.fideBlitzElo, existing.fideBlitzElo),
       homeCity: loc.city,
       homePostalCode: loc.postalCode,
       homeLat: loc.lat,
@@ -51,10 +97,28 @@ export async function PUT(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // Support FRBE / FIDE Federation Rating & Club Auto-Lookup
+    if (body.action === 'lookup-federation') {
+      const result = await lookupFederationPlayerProfile({
+        belgianMatricule: body.belgianMatricule,
+        fideId: body.fideId,
+        fullName: body.fullName,
+        clubMatricule: body.clubMatricule,
+      });
+      return NextResponse.json(result);
+    }
+
     const profile = getPlayerProfile();
+    const tournaments = getAllTournamentsEnriched();
+    const { ageCategory } = getBelgianAgeCategory(profile.birthYear);
+
     const entry = await lookupChessResultsTnr(
       body.chessResultsTnr || '1048291',
-      profile.fullName
+      profile.fullName,
+      tournaments,
+      profile.belgianElo || profile.fideRapidElo,
+      ageCategory
     );
     upsertPlayerEntry(entry);
     const entries = getPlayerEntries();
@@ -66,3 +130,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
