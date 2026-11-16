@@ -7,10 +7,6 @@ interface BelgiumMapProps {
   tournaments: Tournament[];
   selectedTournamentId: string | null;
   onSelectTournament: (t: Tournament) => void;
-  maxDistanceKm: number;
-  referenceCity?: string;
-  referenceLat?: number;
-  referenceLng?: number;
 }
 
 // Bounding box for Belgium projection onto 800 x 560 canvas
@@ -31,16 +27,7 @@ export default function BelgiumMap({
   tournaments,
   selectedTournamentId,
   onSelectTournament,
-  maxDistanceKm,
-  referenceCity = 'Brussels',
-  referenceLat = 50.8466,
-  referenceLng = 4.3528,
 }: BelgiumMapProps) {
-  const homePt = projectCoords(referenceLat, referenceLng);
-
-  // Convert maxDistanceKm into approximate SVG radius
-  const radiusPx =
-    maxDistanceKm < 250 ? Math.min(340, Math.round(maxDistanceKm * 2.15)) : 0;
 
   return (
     <div className="belgium-map-shell" id="belgium-interactive-map">
@@ -107,6 +94,7 @@ export default function BelgiumMap({
 
           {/* Reference city labels */}
           {[
+            { name: 'Brussels', lat: 50.8466, lng: 4.3528 },
             { name: 'Bruges', lat: 51.2093, lng: 3.2247 },
             { name: 'Ghent', lat: 51.0543, lng: 3.7174 },
             { name: 'Antwerp', lat: 51.2194, lng: 4.4025 },
@@ -127,28 +115,6 @@ export default function BelgiumMap({
               </g>
             );
           })}
-
-          {/* Distance radius circle around Home Base */}
-          {radiusPx > 0 && (
-            <circle
-              cx={homePt.x}
-              cy={homePt.y}
-              r={radiusPx}
-              className="home-radius-circle"
-            />
-          )}
-
-          {/* Home Base Marker */}
-          <g
-            transform={`translate(${homePt.x}, ${homePt.y})`}
-            className="home-base-marker"
-          >
-            <circle r="11" className="home-pulse-ring" />
-            <circle r="6" className="home-core-dot" />
-            <text x="0" y="-14" textAnchor="middle" className="home-label-pill">
-              BASE: {referenceCity.toUpperCase()}
-            </text>
-          </g>
 
           {/* Tournament Pins */}
           {(() => {
@@ -212,7 +178,7 @@ export default function BelgiumMap({
                     {t.category === 'youth' ? 'Y' : t.category === 'both' ? 'Y+' : 'O'}
                   </text>
                   <title>
-                    {`${t.title} (${t.city}) — ${t.startDate} • ${t.distanceKm} km from ${referenceCity}`}
+                    {`${t.title} (${t.city}) — ${t.startDate}`}
                   </title>
                 </g>
               );

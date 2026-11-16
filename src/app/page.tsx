@@ -54,7 +54,6 @@ export default function BelgianChessHubPage() {
   const [circuitFilter, setCircuitFilter] = useState<string>('ALL');
   const [timeControlFilter, setTimeControlFilter] = useState<string>('ALL');
   const [regionFilter, setRegionFilter] = useState<string>('ALL');
-  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(250);
   const [showFiltersExpanded, setShowFiltersExpanded] = useState<boolean>(false);
 
   // Selected tournament for Map / Details (defaults to next upcoming tournament)
@@ -135,10 +134,6 @@ export default function BelgianChessHubPage() {
         return false;
       }
 
-      if (maxDistanceKm < 250 && (t.distanceKm ?? 0) > maxDistanceKm) {
-        return false;
-      }
-
       return true;
     });
   }, [
@@ -148,7 +143,6 @@ export default function BelgianChessHubPage() {
     circuitFilter,
     timeControlFilter,
     regionFilter,
-    maxDistanceKm,
   ]);
 
   const selectedTournament = useMemo(() => {
@@ -360,13 +354,6 @@ export default function BelgianChessHubPage() {
               Belgian Data Sources & Sync Logs
             </button>
           </div>
-
-          <div className="federation-sources-strip">
-            <span className="source-dot" />
-            <span>
-              Distances from <strong>Brussels (1000)</strong>
-            </span>
-          </div>
         </div>
       </nav>
 
@@ -479,12 +466,6 @@ export default function BelgianChessHubPage() {
                   <span className="age-tag">
                     Region: {regionFilter === 'ALL' ? 'All Belgium' : regionFilter}
                   </span>
-                  <span className="age-tag">
-                    Distance:{' '}
-                    {maxDistanceKm >= 250
-                      ? 'All Belgium'
-                      : `≤ ${maxDistanceKm} km from Brussels`}
-                  </span>
                 </div>
 
                 <span
@@ -525,8 +506,7 @@ export default function BelgianChessHubPage() {
                       categoryFilter !== 'all' ||
                       circuitFilter !== 'ALL' ||
                       timeControlFilter !== 'ALL' ||
-                      regionFilter !== 'ALL' ||
-                      maxDistanceKm < 250) && (
+                      regionFilter !== 'ALL') && (
                       <button
                         type="button"
                         className="btn-status"
@@ -536,7 +516,6 @@ export default function BelgianChessHubPage() {
                           setCircuitFilter('ALL');
                           setTimeControlFilter('ALL');
                           setRegionFilter('ALL');
-                          setMaxDistanceKm(250);
                         }}
                       >
                         Reset
@@ -619,24 +598,6 @@ export default function BelgianChessHubPage() {
                       <option value="Flanders">Flanders (VSF)</option>
                       <option value="Wallonia">Wallonia & East Belgium (FEFB/SVDB)</option>
                     </select>
-                  </div>
-
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="distance-range">
-                      <span>Max Distance from Brussels</span>
-                      <strong>
-                        {maxDistanceKm >= 250 ? 'All Belgium' : `≤ ${maxDistanceKm} km`}
-                      </strong>
-                    </label>
-                    <input
-                      id="distance-range"
-                      type="range"
-                      min={15}
-                      max={250}
-                      step={5}
-                      value={maxDistanceKm}
-                      onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                    />
                   </div>
                 </div>
 
@@ -724,7 +685,7 @@ export default function BelgianChessHubPage() {
                         </div>
 
                         <span className="distance-pill">
-                          {t.distanceKm} km • ~{t.estimatedDriveMinutes} min drive
+                          {t.city}
                         </span>
                       </div>
 
@@ -865,7 +826,6 @@ export default function BelgianChessHubPage() {
                 tournaments={filteredTournaments}
                 selectedTournamentId={selectedTournament?.id || null}
                 onSelectTournament={(t) => setSelectedTournamentId(t.id)}
-                maxDistanceKm={maxDistanceKm}
               />
             </div>
 
@@ -917,7 +877,7 @@ export default function BelgianChessHubPage() {
                       size={13}
                       style={{ display: 'inline', marginRight: '4px' }}
                     />
-                    <strong>Venue:</strong> {selectedTournament.venueAddress} ({selectedTournament.distanceKm} km • ~{selectedTournament.estimatedDriveMinutes} min drive)
+                    <strong>Venue:</strong> {selectedTournament.venueAddress}
                   </p>
                   <p
                     style={{
@@ -1123,7 +1083,7 @@ export default function BelgianChessHubPage() {
                             marginBottom: '0.45rem',
                           }}
                         >
-                          {t.venueAddress} ({t.distanceKm} km • ~{t.estimatedDriveMinutes} min drive)
+                          {t.venueAddress}
                         </p>
                         <p
                           style={{
@@ -1294,7 +1254,7 @@ export default function BelgianChessHubPage() {
                             marginBottom: '0.5rem',
                           }}
                         >
-                          {t.city} • {t.distanceKm} km from Brussels • Entry: {t.entryFee}
+                          {t.city} • Entry: {t.entryFee}
                         </p>
                         <div style={{ marginBottom: '0.55rem' }}>
                           <input
@@ -1428,7 +1388,7 @@ export default function BelgianChessHubPage() {
                 marginBottom: '1rem',
               }}
             >
-              Enter details from a local club flyer or Chess-Results page. It will automatically geocode the Belgian postal code and compute driving distance from Brussels.
+              Enter details from a local club flyer or Chess-Results page. It will automatically geocode the Belgian postal code for the interactive map.
             </p>
             <form
               onSubmit={handleCreateCustomTournament}
