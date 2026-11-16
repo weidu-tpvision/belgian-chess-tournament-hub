@@ -492,7 +492,7 @@ export default function BelgianChessHubPage() {
               onClick={() => setActiveTab('schedule')}
             >
               <Calendar size={16} />
-              My Son’s Schedule & iCal
+              My Schedule & iCal
               <span className="tab-count-pill">{bookmarkedTournaments.length}</span>
             </button>
             <button
@@ -1374,7 +1374,7 @@ export default function BelgianChessHubPage() {
                   marginBottom: '1rem',
                 }}
               >
-                Configure your son’s Belgian Matricule, FIDE ID, affiliated club, birth year, ratings, and home postal code to personalize distances and section eligibility.
+                Configure the player’s Belgian Matricule, FIDE ID, affiliated club, birth year, ratings, and home postal code to personalize distances and section eligibility.
               </p>
 
               <form
