@@ -412,6 +412,11 @@ textarea {
   .finder-split-layout {
     grid-template-columns: 1fr;
   }
+
+  .sticky-map-col {
+    order: -1;
+    position: static;
+  }
 }
 
 .tournaments-list-col {
