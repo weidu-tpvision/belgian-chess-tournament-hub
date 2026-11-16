@@ -39,7 +39,7 @@ import {
 } from '@/lib/belgium-geo';
 import { BELGIAN_CLUBS_BY_MATRICULE } from '@/lib/scrapers/frbe';
 
-type ActiveTab = 'finder' | 'schedule' | 'player' | 'sources';
+type ActiveTab = 'finder' | 'map' | 'schedule' | 'player' | 'sources';
 
 export default function BelgianChessHubPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('finder');
@@ -482,7 +482,17 @@ export default function BelgianChessHubPage() {
               onClick={() => setActiveTab('finder')}
             >
               <Compass size={16} />
-              Tournament Finder & Map
+              Tournament Finder
+              <span className="tab-count-pill">{filteredTournaments.length}</span>
+            </button>
+            <button
+              id="tab-map"
+              type="button"
+              className={`nav-tab-btn ${activeTab === 'map' ? 'active' : ''}`}
+              onClick={() => setActiveTab('map')}
+            >
+              <MapPin size={16} />
+              Interactive Map
               <span className="tab-count-pill">{filteredTournaments.length}</span>
             </button>
             <button
@@ -559,10 +569,9 @@ export default function BelgianChessHubPage() {
           </div>
         )}
 
-        {/* TAB 1: TOURNAMENT FINDER & INTERACTIVE MAP */}
-        {activeTab === 'finder' && (
-          <>
-            <section className="filter-panel" aria-label="Tournament Filters">
+        {/* SHARED FILTER BAR FOR TOURNAMENT FINDER & INTERACTIVE MAP */}
+        {(activeTab === 'finder' || activeTab === 'map') && (
+          <section className="filter-panel" aria-label="Tournament Filters">
               <div className="filter-grid">
                 <div className="filter-field">
                   <label className="filter-label" htmlFor="search-input">
@@ -700,10 +709,11 @@ export default function BelgianChessHubPage() {
                 </label>
               </div>
             </section>
+        )}
 
-            {/* Split List + Map */}
-            <div className="finder-split-layout">
-              <div className="tournaments-list-col">
+        {/* TAB 1: TOURNAMENT FINDER */}
+        {activeTab === 'finder' && (
+          <div className="tournaments-list-col">
                 {filteredTournaments.map((t) => {
                   const isSelected = selectedTournament?.id === t.id;
                   const bStatus = t.bookmark?.status;
@@ -887,104 +897,137 @@ export default function BelgianChessHubPage() {
                   );
                 })}
               </div>
-
-              {/* Sticky Map & Selected Venue Inspector */}
-              <aside className="sticky-map-col">
-                <BelgiumMap
-                  tournaments={filteredTournaments}
-                  selectedTournamentId={selectedTournament?.id || null}
-                  onSelectTournament={(t) => setSelectedTournamentId(t.id)}
-                  playerProfile={playerProfile}
-                  maxDistanceKm={maxDistanceKm}
-                />
-
-                {selectedTournament && (
-                  <div className="selected-preview-card">
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '0.45rem',
-                      }}
-                    >
-                      <span className="map-eyebrow">
-                        SELECTED TOURNAMENT LOGISTICS
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: '0.74rem',
-                          color: 'var(--accent-forest)',
-                          fontWeight: 700,
-                        }}
-                      >
-                        Club Matricule #{selectedTournament.clubMatricule}
-                      </span>
-                    </div>
-                    <h4 style={{ fontSize: '1.02rem', marginBottom: '0.4rem' }}>
-                      {selectedTournament.title}
-                    </h4>
-                    <p
-                      style={{
-                        fontSize: '0.82rem',
-                        color: 'var(--text-secondary)',
-                        marginBottom: '0.6rem',
-                      }}
-                    >
-                      <MapPin
-                        size={13}
-                        style={{ display: 'inline', marginRight: '4px' }}
-                      />
-                      <strong>Venue:</strong> {selectedTournament.venueAddress}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: '0.82rem',
-                        color: 'var(--text-secondary)',
-                        marginBottom: '0.6rem',
-                      }}
-                    >
-                      <Clock
-                        size={13}
-                        style={{ display: 'inline', marginRight: '4px' }}
-                      />
-                      <strong>Schedule:</strong> {selectedTournament.scheduleSummary}
-                    </p>
-                    <div
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '0.4rem',
-                        marginTop: '0.5rem',
-                      }}
-                    >
-                      <span>Verified Sources:</span>
-                      {selectedTournament.sources.map((s) => (
-                        <span
-                          key={s}
-                          style={{
-                            background: 'var(--bg-subtle)',
-                            padding: '0.1rem 0.45rem',
-                            borderRadius: '4px',
-                            color: 'var(--text-primary)',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </aside>
-            </div>
-          </>
         )}
 
-        {/* TAB 2: MY SON'S SCHEDULE & ICAL SYNC */}
+        {/* TAB 2: INTERACTIVE MAP */}
+        {activeTab === 'map' && (
+          <section className="finder-split-layout" aria-label="Interactive Tournament Map">
+            <div>
+              <BelgiumMap
+                tournaments={filteredTournaments}
+                selectedTournamentId={selectedTournament?.id || null}
+                onSelectTournament={(t) => setSelectedTournamentId(t.id)}
+                playerProfile={playerProfile}
+                maxDistanceKm={maxDistanceKm}
+              />
+            </div>
+
+            <aside className="sticky-map-col">
+              {selectedTournament && (
+                <div className="selected-preview-card">
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '0.45rem',
+                    }}
+                  >
+                    <span className="map-eyebrow">
+                      SELECTED TOURNAMENT LOGISTICS
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '0.74rem',
+                        color: 'var(--accent-forest)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Club Matricule #{selectedTournament.clubMatricule}
+                    </span>
+                  </div>
+                  <h4 style={{ fontSize: '1.08rem', marginBottom: '0.45rem' }}>
+                    {selectedTournament.title}
+                  </h4>
+                  <p
+                    style={{
+                      fontSize: '0.84rem',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '0.65rem',
+                    }}
+                  >
+                    {selectedTournament.englishSummary}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '0.82rem',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    <MapPin
+                      size={13}
+                      style={{ display: 'inline', marginRight: '4px' }}
+                    />
+                    <strong>Venue:</strong> {selectedTournament.venueAddress} ({selectedTournament.distanceKm} km • ~{selectedTournament.estimatedDriveMinutes} min drive)
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '0.82rem',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '0.6rem',
+                    }}
+                  >
+                    <Clock
+                      size={13}
+                      style={{ display: 'inline', marginRight: '4px' }}
+                    />
+                    <strong>Schedule:</strong> {selectedTournament.scheduleSummary}
+                  </p>
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.4rem',
+                      marginTop: '0.5rem',
+                      marginBottom: '0.85rem',
+                    }}
+                  >
+                    <span>Verified Sources:</span>
+                    {selectedTournament.sources.map((s) => (
+                      <span
+                        key={s}
+                        style={{
+                          background: 'var(--bg-subtle)',
+                          padding: '0.1rem 0.45rem',
+                          borderRadius: '4px',
+                          color: 'var(--text-primary)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn-status active-registered"
+                      onClick={() => setActiveTab('finder')}
+                    >
+                      <Compass size={14} />
+                      View in Tournament Finder
+                    </button>
+                    <a
+                      href={selectedTournament.officialUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ext-link"
+                    >
+                      Official Info
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+                </div>
+              )}
+            </aside>
+          </section>
+        )}
+
+        {/* TAB 3: TOURNAMENT SCHEDULE & ICAL SYNC */}
         {activeTab === 'schedule' && (
           <section aria-label="Personal Tournament Schedule">
             <div className="schedule-header-card">
