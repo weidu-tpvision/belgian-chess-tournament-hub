@@ -31,6 +31,14 @@ import {
 
 type ActiveTab = 'finder' | 'map' | 'schedule' | 'sources';
 
+function getNextUpcomingTournamentId(list: Tournament[]): string | null {
+  if (list.length === 0) return null;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const sorted = [...list].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const upcoming = sorted.find((t) => t.startDate >= todayIso);
+  return (upcoming || sorted[0]).id;
+}
+
 export default function BelgianChessHubPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('finder');
   const [tournaments, setTournaments] = useState<Tournament[]>(INITIAL_TOURNAMENTS);
@@ -49,9 +57,9 @@ export default function BelgianChessHubPage() {
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(250);
   const [showFiltersExpanded, setShowFiltersExpanded] = useState<boolean>(false);
 
-  // Selected tournament for Map / Details
+  // Selected tournament for Map / Details (defaults to next upcoming tournament)
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(
-    INITIAL_TOURNAMENTS[0]?.id || null
+    () => getNextUpcomingTournamentId(INITIAL_TOURNAMENTS)
   );
 
   // Add Custom Tournament Modal
@@ -144,10 +152,13 @@ export default function BelgianChessHubPage() {
   ]);
 
   const selectedTournament = useMemo(() => {
+    if (filteredTournaments.length === 0) return null;
+    const match = filteredTournaments.find((t) => t.id === selectedTournamentId);
+    if (match) return match;
+    const nextId = getNextUpcomingTournamentId(filteredTournaments);
     return (
-      filteredTournaments.find((t) => t.id === selectedTournamentId) ||
-      filteredTournaments[0] ||
-      null
+      filteredTournaments.find((t) => t.id === nextId) ||
+      filteredTournaments[0]
     );
   }, [filteredTournaments, selectedTournamentId]);
 
@@ -845,7 +856,10 @@ export default function BelgianChessHubPage() {
 
         {/* TAB 2: INTERACTIVE MAP */}
         {activeTab === 'map' && (
-          <section className="finder-split-layout" aria-label="Interactive Tournament Map">
+          <section
+            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+            aria-label="Interactive Tournament Map"
+          >
             <div>
               <BelgiumMap
                 tournaments={filteredTournaments}
@@ -855,7 +869,7 @@ export default function BelgianChessHubPage() {
               />
             </div>
 
-            <aside className="sticky-map-col">
+            <div>
               {selectedTournament && (
                 <div className="selected-preview-card">
                   <div
@@ -966,7 +980,7 @@ export default function BelgianChessHubPage() {
                   </div>
                 </div>
               )}
-            </aside>
+            </div>
           </section>
         )}
 

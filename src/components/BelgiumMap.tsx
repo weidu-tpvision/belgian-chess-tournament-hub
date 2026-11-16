@@ -151,53 +151,131 @@ export default function BelgiumMap({
           </g>
 
           {/* Tournament Pins */}
-          {tournaments.map((t, index) => {
-            const pt = projectCoords(t.lat, t.lng);
-            // Slight deterministic offset if multiple events in same city
-            const offsetAngle = (index % 5) * 1.25;
-            const offsetX = Math.round(Math.cos(offsetAngle) * 4);
-            const offsetY = Math.round(Math.sin(offsetAngle) * 4);
-            const cx = pt.x + offsetX;
-            const cy = pt.y + offsetY;
+          {(() => {
+            let selectedCallout: {
+              cx: number;
+              cy: number;
+              title: string;
+              meta: string;
+            } | null = null;
 
-            const isSelected = selectedTournamentId === t.id;
-            const isBookmarked =
-              t.bookmark?.status === 'registered' ||
-              t.bookmark?.status === 'interested';
+            const pinElements = tournaments.map((t, index) => {
+              const pt = projectCoords(t.lat, t.lng);
+              // Slight deterministic offset if multiple events in same city
+              const offsetAngle = (index % 5) * 1.25;
+              const offsetX = Math.round(Math.cos(offsetAngle) * 4);
+              const offsetY = Math.round(Math.sin(offsetAngle) * 4);
+              const cx = pt.x + offsetX;
+              const cy = pt.y + offsetY;
 
-            let pinClass = 'pin-both';
-            if (isBookmarked) pinClass = 'pin-saved';
-            else if (t.category === 'youth') pinClass = 'pin-youth';
-            else if (t.category === 'open') pinClass = 'pin-open';
+              const isSelected = selectedTournamentId === t.id;
+              if (isSelected) {
+                const shortTitle =
+                  t.title.length > 42 ? `${t.title.slice(0, 41)}…` : t.title;
+                selectedCallout = {
+                  cx,
+                  cy,
+                  title: shortTitle,
+                  meta: `${t.city} • ${t.startDate}`,
+                };
+              }
+
+              const isBookmarked =
+                t.bookmark?.status === 'registered' ||
+                t.bookmark?.status === 'interested';
+
+              let pinClass = 'pin-both';
+              if (isBookmarked) pinClass = 'pin-saved';
+              else if (t.category === 'youth') pinClass = 'pin-youth';
+              else if (t.category === 'open') pinClass = 'pin-open';
+
+              return (
+                <g
+                  key={t.id}
+                  transform={`translate(${cx}, ${cy})`}
+                  className={`map-pin-group ${isSelected ? 'is-selected' : ''}`}
+                  onClick={() => onSelectTournament(t)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {isSelected && <circle r="16" className="pin-selected-halo" />}
+                  <circle
+                    r={isSelected ? 10 : 8}
+                    className={`map-pin-circle ${pinClass}`}
+                    filter="url(#pinShadow)"
+                  />
+                  <text
+                    x="0"
+                    y="3.5"
+                    textAnchor="middle"
+                    className="map-pin-inner-text"
+                  >
+                    {t.category === 'youth' ? 'Y' : t.category === 'both' ? 'Y+' : 'O'}
+                  </text>
+                  <title>
+                    {`${t.title} (${t.city}) — ${t.startDate} • ${t.distanceKm} km from ${referenceCity}`}
+                  </title>
+                </g>
+              );
+            });
+
+            if (!selectedCallout) return pinElements;
+
+            const callout = selectedCallout as {
+              cx: number;
+              cy: number;
+              title: string;
+              meta: string;
+            };
+            const boxW = Math.max(170, Math.min(310, callout.title.length * 6.4 + 28));
+            const boxH = 40;
+            const rawX = callout.cx - boxW / 2;
+            const boxX = Math.max(12, Math.min(MAP_W - boxW - 12, rawX));
+            const showBelow = callout.cy < 72;
+            const boxY = showBelow ? callout.cy + 18 : callout.cy - boxH - 18;
 
             return (
-              <g
-                key={t.id}
-                transform={`translate(${cx}, ${cy})`}
-                className={`map-pin-group ${isSelected ? 'is-selected' : ''}`}
-                onClick={() => onSelectTournament(t)}
-                style={{ cursor: 'pointer' }}
-              >
-                {isSelected && <circle r="16" className="pin-selected-halo" />}
-                <circle
-                  r={isSelected ? 10 : 8}
-                  className={`map-pin-circle ${pinClass}`}
+              <>
+                {pinElements}
+                <g
+                  className="map-floating-callout"
+                  style={{ pointerEvents: 'none' }}
                   filter="url(#pinShadow)"
-                />
-                <text
-                  x="0"
-                  y="3.5"
-                  textAnchor="middle"
-                  className="map-pin-inner-text"
                 >
-                  {t.category === 'youth' ? 'Y' : t.category === 'both' ? 'Y+' : 'O'}
-                </text>
-                <title>
-                  {`${t.title} (${t.city}) — ${t.startDate} • ${t.distanceKm} km from ${referenceCity}`}
-                </title>
-              </g>
+                  <rect
+                    x={boxX}
+                    y={boxY}
+                    width={boxW}
+                    height={boxH}
+                    rx={6}
+                    ry={6}
+                    fill="#fffdf8"
+                    stroke="#1b4332"
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={boxX + boxW / 2}
+                    y={boxY + 16}
+                    textAnchor="middle"
+                    fontSize="10.5"
+                    fontWeight="700"
+                    fill="#161917"
+                  >
+                    {callout.title}
+                  </text>
+                  <text
+                    x={boxX + boxW / 2}
+                    y={boxY + 30}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fontWeight="600"
+                    fill="#1b4332"
+                  >
+                    {callout.meta}
+                  </text>
+                </g>
+              </>
             );
-          })}
+          })()}
         </svg>
       </div>
     </div>
