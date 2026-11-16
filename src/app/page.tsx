@@ -774,9 +774,9 @@ export default function BelgianChessHubPage() {
                       onChange={(e) => setTimeControlFilter(e.target.value)}
                     >
                       <option value="ALL">All Time Controls</option>
-                      <option value="rapid">Rapid (15m+5s / 25m+10s)</option>
-                      <option value="standard">Classical / Standard (90m+30s)</option>
-                      <option value="blitz">Blitz (3m+2s / 5m+3s)</option>
+                      <option value="standard">Standard</option>
+                      <option value="rapid">Rapid</option>
+                      <option value="blitz">Blitz</option>
                     </select>
                   </div>
 
@@ -2246,8 +2246,8 @@ export default function BelgianChessHubPage() {
                       )
                     }
                   >
+                    <option value="standard">Standard</option>
                     <option value="rapid">Rapid</option>
-                    <option value="standard">Classical</option>
                     <option value="blitz">Blitz</option>
                   </select>
                 </div>
