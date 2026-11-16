@@ -13,9 +13,6 @@ import {
   PlusCircle,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
-  Trophy,
-  UserCheck,
   Clock,
   Bookmark,
   CheckCircle2,
@@ -24,35 +21,19 @@ import {
 import BelgiumMap from '@/components/BelgiumMap';
 import {
   Tournament,
-  PlayerProfile,
-  PlayerTournamentEntry,
   SyncLog,
   BookmarkStatus,
 } from '@/db/schema';
 import {
   INITIAL_TOURNAMENTS,
-  INITIAL_PLAYER_PROFILE,
-  INITIAL_PLAYER_ENTRIES,
   INITIAL_SYNC_LOGS,
 } from '@/db/seed-data';
-import {
-  BELGIAN_LOCATIONS,
-  getBelgianAgeCategory,
-  isSectionMatchingPlayer,
-} from '@/lib/belgium-geo';
-import { BELGIAN_CLUBS_BY_MATRICULE } from '@/lib/scrapers/frbe';
 
-type ActiveTab = 'finder' | 'map' | 'schedule' | 'player' | 'sources';
+type ActiveTab = 'finder' | 'map' | 'schedule' | 'sources';
 
 export default function BelgianChessHubPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('finder');
   const [tournaments, setTournaments] = useState<Tournament[]>(INITIAL_TOURNAMENTS);
-  const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(
-    INITIAL_PLAYER_PROFILE
-  );
-  const [playerEntries, setPlayerEntries] = useState<PlayerTournamentEntry[]>(
-    INITIAL_PLAYER_ENTRIES
-  );
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>(INITIAL_SYNC_LOGS);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncBanner, setSyncBanner] = useState<string | null>(null);
@@ -66,7 +47,6 @@ export default function BelgianChessHubPage() {
   const [timeControlFilter, setTimeControlFilter] = useState<string>('ALL');
   const [regionFilter, setRegionFilter] = useState<string>('ALL');
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(250);
-  const [u10OnlyToggle, setU10OnlyToggle] = useState<boolean>(false);
   const [showFiltersExpanded, setShowFiltersExpanded] = useState<boolean>(false);
 
   // Selected tournament for Map / Details
@@ -90,54 +70,17 @@ export default function BelgianChessHubPage() {
   const [newOfficialUrl, setNewOfficialUrl] = useState('');
   const [newIsFideRated, setNewIsFideRated] = useState(false);
 
-  // Player Profile Form State
-  const [profileForm, setProfileForm] = useState<PlayerProfile>(
-    INITIAL_PLAYER_PROFILE
-  );
-  const [tnrLookupInput, setTnrLookupInput] = useState('1048291');
-  const [profileSavedMsg, setProfileSavedMsg] = useState<string | null>(null);
-  const [isLookingUpFederation, setIsLookingUpFederation] = useState(false);
-
-  // Dynamic Age Category & Max Rating
-  const { age: playerAge, ageCategory: ageCategoryLabel } = useMemo(
-    () => getBelgianAgeCategory(playerProfile.birthYear),
-    [playerProfile.birthYear]
-  );
-
-  const playerMaxElo = useMemo(
-    () =>
-      Math.max(
-        playerProfile.belgianElo || 0,
-        playerProfile.fideRapidElo || 0,
-        playerProfile.fideStandardElo || 0
-      ),
-    [
-      playerProfile.belgianElo,
-      playerProfile.fideRapidElo,
-      playerProfile.fideStandardElo,
-    ]
-  );
-
   // Load enriched data from backend on mount
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [tourRes, playerRes, syncRes] = await Promise.all([
+        const [tourRes, syncRes] = await Promise.all([
           fetch('/api/tournaments'),
-          fetch('/api/player'),
           fetch('/api/sync'),
         ]);
         if (tourRes.ok) {
           const data = await tourRes.json();
           if (data.tournaments) setTournaments(data.tournaments);
-        }
-        if (playerRes.ok) {
-          const pData = await playerRes.json();
-          if (pData.profile) {
-            setPlayerProfile(pData.profile);
-            setProfileForm(pData.profile);
-          }
-          if (pData.entries) setPlayerEntries(pData.entries);
         }
         if (syncRes.ok) {
           const sData = await syncRes.json();
@@ -188,13 +131,6 @@ export default function BelgianChessHubPage() {
         return false;
       }
 
-      if (u10OnlyToggle) {
-        const hasEligibleSection = t.ageGroups.some((g) =>
-          isSectionMatchingPlayer(g, ageCategoryLabel, playerMaxElo)
-        );
-        if (!hasEligibleSection) return false;
-      }
-
       return true;
     });
   }, [
@@ -205,9 +141,6 @@ export default function BelgianChessHubPage() {
     timeControlFilter,
     regionFilter,
     maxDistanceKm,
-    u10OnlyToggle,
-    ageCategoryLabel,
-    playerMaxElo,
   ]);
 
   const selectedTournament = useMemo(() => {
@@ -244,19 +177,13 @@ export default function BelgianChessHubPage() {
   }, [bookmarkedTournaments]);
 
   function getDefaultSectionForTournament(t: Tournament): string {
-    return (
-      t.ageGroups.find((g) =>
-        isSectionMatchingPlayer(g, ageCategoryLabel, playerMaxElo)
-      ) ||
-      t.ageGroups[0] ||
-      ageCategoryLabel
-    );
+    return t.ageGroups[0] || 'Open';
   }
 
   async function handleBookmarkToggle(
     tournamentId: string,
     status: BookmarkStatus | null,
-    section: string = ageCategoryLabel,
+    section: string = 'Open',
     notes?: string
   ) {
     try {
@@ -269,7 +196,7 @@ export default function BelgianChessHubPage() {
         body: JSON.stringify({
           tournamentId,
           status,
-          section: section || existingBookmark?.section || ageCategoryLabel,
+          section: section || existingBookmark?.section || 'Open',
           notes: notes !== undefined ? notes : existingBookmark?.notes || '',
         }),
       });
@@ -335,76 +262,6 @@ export default function BelgianChessHubPage() {
     }
   }
 
-  async function handleSavePlayerProfile(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch('/api/player', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileForm),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setPlayerProfile(data.profile);
-      setProfileForm(data.profile);
-      setTournaments(data.tournaments);
-      setProfileSavedMsg(
-        `Saved profile (${data.profile.fullName}) & recalculated driving distances from ${data.profile.homeCity} (${data.profile.homePostalCode}).`
-      );
-      setTimeout(() => setProfileSavedMsg(null), 5000);
-    }
-  }
-
-  async function handleLookupFederationProfile() {
-    setIsLookingUpFederation(true);
-    try {
-      const res = await fetch('/api/player', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'lookup-federation',
-          belgianMatricule: profileForm.belgianMatricule,
-          fideId: profileForm.fideId,
-          fullName: profileForm.fullName,
-          clubMatricule: profileForm.clubMatricule,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.profilePatch) {
-          const nextPostal =
-            data.profilePatch.homePostalCode || profileForm.homePostalCode;
-          const nextCity =
-            BELGIAN_LOCATIONS[nextPostal]?.city || profileForm.homeCity;
-          setProfileForm((prev) => ({
-            ...prev,
-            ...data.profilePatch,
-            homePostalCode: nextPostal,
-            homeCity: nextCity,
-          }));
-          setProfileSavedMsg(
-            `${data.sourceMessage} Click "Save Player Profile" below to apply.`
-          );
-        }
-      }
-    } finally {
-      setIsLookingUpFederation(false);
-    }
-  }
-
-  async function handleImportChessResultsTnr(e: React.FormEvent) {
-    e.preventDefault();
-    if (!tnrLookupInput.trim()) return;
-    const res = await fetch('/api/player', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chessResultsTnr: tnrLookupInput }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setPlayerEntries(data.entries);
-    }
-  }
-
   return (
     <div>
       {/* Top Masthead */}
@@ -421,33 +278,6 @@ export default function BelgianChessHubPage() {
               <p className="brand-subtitle">
                 FRBE-KBSB • VSF Jeugdschaakcriterium • FEFB Circuit JEF • SVDB • Chess-Results BEL
               </p>
-            </div>
-          </div>
-
-          {/* Player Summary Pill */}
-          <div className="player-ribbon">
-            <div className="player-chip-main">
-              <span className="player-chip-name">
-                {playerProfile.fullName} ({playerAge} yo)
-                <span className="age-cat-badge">{ageCategoryLabel}</span>
-              </span>
-              <span className="player-chip-meta">
-                Matricule #{playerProfile.belgianMatricule} • FIDE #{playerProfile.fideId} • Club #{playerProfile.clubMatricule} • Base: {playerProfile.homeCity} ({playerProfile.homePostalCode})
-              </span>
-            </div>
-            <div className="elo-mini-pills">
-              <span className="elo-pill">
-                BEL <strong>{playerProfile.belgianElo}</strong>
-              </span>
-              <span className="elo-pill">
-                Rapid <strong>{playerProfile.fideRapidElo}</strong>
-              </span>
-              <span className="elo-pill">
-                Std <strong>{playerProfile.fideStandardElo}</strong>
-              </span>
-              <span className="elo-pill">
-                Blitz <strong>{playerProfile.fideBlitzElo}</strong>
-              </span>
             </div>
           </div>
 
@@ -510,16 +340,6 @@ export default function BelgianChessHubPage() {
               <span className="tab-count-pill">{bookmarkedTournaments.length}</span>
             </button>
             <button
-              id="tab-player"
-              type="button"
-              className={`nav-tab-btn ${activeTab === 'player' ? 'active' : ''}`}
-              onClick={() => setActiveTab('player')}
-            >
-              <Trophy size={16} />
-              Player Profile & Chess-Results Tracker
-              <span className="tab-count-pill">{playerEntries.length}</span>
-            </button>
-            <button
               id="tab-sources"
               type="button"
               className={`nav-tab-btn ${activeTab === 'sources' ? 'active' : ''}`}
@@ -533,7 +353,7 @@ export default function BelgianChessHubPage() {
           <div className="federation-sources-strip">
             <span className="source-dot" />
             <span>
-              Home radius from <strong>{playerProfile.homeCity} ({playerProfile.homePostalCode})</strong>
+              Distances from <strong>Brussels (1000)</strong>
             </span>
           </div>
         </div>
@@ -629,7 +449,7 @@ export default function BelgianChessHubPage() {
                   <span className="age-tag">
                     Category:{' '}
                     {categoryFilter === 'all'
-                      ? `All (${playerAge}yo)`
+                      ? 'All Categories'
                       : categoryFilter === 'youth'
                       ? 'Youth'
                       : categoryFilter === 'both'
@@ -652,13 +472,8 @@ export default function BelgianChessHubPage() {
                     Distance:{' '}
                     {maxDistanceKm >= 250
                       ? 'All Belgium'
-                      : `≤ ${maxDistanceKm} km from ${playerProfile.homeCity}`}
+                      : `≤ ${maxDistanceKm} km from Brussels`}
                   </span>
-                  {u10OnlyToggle && (
-                    <span className="age-tag highlight-u10">
-                      {ageCategoryLabel} / {playerMaxElo} ELO Eligible
-                    </span>
-                  )}
                 </div>
 
                 <span
@@ -700,8 +515,7 @@ export default function BelgianChessHubPage() {
                       circuitFilter !== 'ALL' ||
                       timeControlFilter !== 'ALL' ||
                       regionFilter !== 'ALL' ||
-                      maxDistanceKm < 250 ||
-                      u10OnlyToggle) && (
+                      maxDistanceKm < 250) && (
                       <button
                         type="button"
                         className="btn-status"
@@ -712,7 +526,6 @@ export default function BelgianChessHubPage() {
                           setTimeControlFilter('ALL');
                           setRegionFilter('ALL');
                           setMaxDistanceKm(250);
-                          setU10OnlyToggle(false);
                         }}
                       >
                         Reset
@@ -799,7 +612,7 @@ export default function BelgianChessHubPage() {
 
                   <div className="filter-field">
                     <label className="filter-label" htmlFor="distance-range">
-                      <span>Max Distance from {playerProfile.homeCity}</span>
+                      <span>Max Distance from Brussels</span>
                       <strong>
                         {maxDistanceKm >= 250 ? 'All Belgium' : `≤ ${maxDistanceKm} km`}
                       </strong>
@@ -823,7 +636,7 @@ export default function BelgianChessHubPage() {
                       className={`toggle-chip ${categoryFilter === 'all' ? 'active' : ''}`}
                       onClick={() => setCategoryFilter('all')}
                     >
-                      All Suitable for {playerAge}yo ({tournaments.length})
+                      All Categories ({tournaments.length})
                     </button>
                     <button
                       type="button"
@@ -847,24 +660,6 @@ export default function BelgianChessHubPage() {
                       Mixed Open Tournaments
                     </button>
                   </div>
-
-                  <label
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={u10OnlyToggle}
-                      onChange={(e) => setU10OnlyToggle(e.target.checked)}
-                    />
-                    Filter by {ageCategoryLabel} & Rating ({playerMaxElo} ELO) Eligibility
-                  </label>
                 </div>
               </>
             )}
@@ -964,18 +759,7 @@ export default function BelgianChessHubPage() {
                           Sections:
                         </span>
                         {t.ageGroups.map((ag) => (
-                          <span
-                            key={ag}
-                            className={`age-tag ${
-                              isSectionMatchingPlayer(
-                                ag,
-                                ageCategoryLabel,
-                                playerMaxElo
-                              )
-                                ? 'highlight-u10'
-                                : ''
-                            }`}
-                          >
+                          <span key={ag} className="age-tag">
                             {ag}
                           </span>
                         ))}
@@ -1067,7 +851,6 @@ export default function BelgianChessHubPage() {
                 tournaments={filteredTournaments}
                 selectedTournamentId={selectedTournament?.id || null}
                 onSelectTournament={(t) => setSelectedTournamentId(t.id)}
-                playerProfile={playerProfile}
                 maxDistanceKm={maxDistanceKm}
               />
             </div>
@@ -1193,7 +976,7 @@ export default function BelgianChessHubPage() {
             <div className="schedule-header-card">
               <div>
                 <h2 style={{ fontSize: '1.35rem', marginBottom: '0.25rem' }}>
-                  {playerProfile.fullName}’s Tournament Planner ({ageCategoryLabel} & Mixed Opens)
+                  Tournament Schedule & Planner
                 </h2>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                   Manage confirmed registrations, target sections, and personal logistics notes. Export directly to Google Calendar or Apple Calendar.
@@ -1306,7 +1089,7 @@ export default function BelgianChessHubPage() {
                               {Array.from(
                                 new Set([
                                   ...t.ageGroups,
-                                  t.bookmark?.section || ageCategoryLabel,
+                                  t.bookmark?.section || t.ageGroups[0] || 'Open',
                                 ])
                               ).map((sec) => (
                                 <option key={sec} value={sec}>
@@ -1477,7 +1260,7 @@ export default function BelgianChessHubPage() {
                               {Array.from(
                                 new Set([
                                   ...t.ageGroups,
-                                  t.bookmark?.section || ageCategoryLabel,
+                                  t.bookmark?.section || t.ageGroups[0] || 'Open',
                                 ])
                               ).map((sec) => (
                                 <option key={sec} value={sec}>
@@ -1497,7 +1280,7 @@ export default function BelgianChessHubPage() {
                             marginBottom: '0.5rem',
                           }}
                         >
-                          {t.city} • {t.distanceKm} km from {playerProfile.homeCity} • Entry: {t.entryFee}
+                          {t.city} • {t.distanceKm} km from Brussels • Entry: {t.entryFee}
                         </p>
                         <div style={{ marginBottom: '0.55rem' }}>
                           <input
@@ -1547,541 +1330,6 @@ export default function BelgianChessHubPage() {
               </div>
             </div>
           </section>
-        )}
-
-        {/* TAB 3: PLAYER PROFILE & CHESS-RESULTS TRACKER */}
-        {activeTab === 'player' && (
-          <div className="player-grid-layout">
-            <div className="profile-editor-card">
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '0.75rem',
-                  marginBottom: '0.35rem',
-                }}
-              >
-                <h2 style={{ fontSize: '1.2rem' }}>
-                  Player & Home Base Settings
-                </h2>
-                <span className="badge badge-both">
-                  {getBelgianAgeCategory(profileForm.birthYear).age} yo •{' '}
-                  {getBelgianAgeCategory(profileForm.birthYear).ageCategory}
-                </span>
-              </div>
-              <p
-                style={{
-                  fontSize: '0.83rem',
-                  color: 'var(--text-secondary)',
-                  marginBottom: '1rem',
-                }}
-              >
-                Configure the player’s Belgian Matricule, FIDE ID, affiliated club, birth year, ratings, and home postal code to personalize distances and section eligibility.
-              </p>
-
-              <form
-                onSubmit={handleSavePlayerProfile}
-                style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}
-              >
-                <div className="filter-field">
-                  <label className="filter-label" htmlFor="profile-fullname">
-                    Player Full Name
-                  </label>
-                  <input
-                    id="profile-fullname"
-                    type="text"
-                    className="filter-input"
-                    value={profileForm.fullName}
-                    onChange={(e) =>
-                      setProfileForm({ ...profileForm, fullName: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-matricule">
-                      Belgian Matricule (FRBE/VSF)
-                    </label>
-                    <input
-                      id="profile-matricule"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g. 114892, 118204"
-                      value={profileForm.belgianMatricule}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          belgianMatricule: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-fideid">
-                      FIDE ID
-                    </label>
-                    <input
-                      id="profile-fideid"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g. 24981420"
-                      value={profileForm.fideId}
-                      onChange={(e) =>
-                        setProfileForm({ ...profileForm, fideId: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* One-click FRBE / FIDE Rating Auto-Fill */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '0.5rem',
-                    background: 'var(--bg-canvas)',
-                    padding: '0.55rem 0.75rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-hairline)',
-                  }}
-                >
-                  <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                    Auto-fill ratings & club from FRBE-KBSB / FIDE ID:
-                  </span>
-                  <button
-                    id="btn-lookup-federation"
-                    type="button"
-                    className="btn-status"
-                    onClick={handleLookupFederationProfile}
-                    disabled={isLookingUpFederation}
-                    style={{ whiteSpace: 'nowrap' }}
-                  >
-                    <Sparkles size={13} />
-                    {isLookingUpFederation ? 'Looking up...' : 'Lookup FRBE / FIDE'}
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1fr 1.2fr', gap: '0.6rem' }}>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-birthyear">
-                      Birth Year
-                    </label>
-                    <input
-                      id="profile-birthyear"
-                      type="number"
-                      min={1940}
-                      max={2024}
-                      className="filter-input"
-                      value={profileForm.birthYear}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          birthYear: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-postal">
-                      Home Postal Code
-                    </label>
-                    <input
-                      id="profile-postal"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g. 1000, 2800, 9000"
-                      value={profileForm.homePostalCode}
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        const matchedLoc = BELGIAN_LOCATIONS[code.trim()];
-                        setProfileForm({
-                          ...profileForm,
-                          homePostalCode: code,
-                          homeCity: matchedLoc ? matchedLoc.city : profileForm.homeCity,
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-city">
-                      Home City
-                    </label>
-                    <input
-                      id="profile-city"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g. Brussels, Ghent"
-                      value={profileForm.homeCity}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          homeCity: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.8fr', gap: '0.65rem' }}>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-club-mat">
-                      Club Matricule
-                    </label>
-                    <input
-                      id="profile-club-mat"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g. 201, 401"
-                      value={profileForm.clubMatricule}
-                      onChange={(e) => {
-                        const cm = e.target.value;
-                        const knownClub = BELGIAN_CLUBS_BY_MATRICULE[cm.trim()];
-                        setProfileForm({
-                          ...profileForm,
-                          clubMatricule: cm,
-                          clubName: knownClub ? knownClub.clubName : profileForm.clubName,
-                        });
-                      }}
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-club-name">
-                      Affiliated Belgian Chess Club
-                    </label>
-                    <input
-                      id="profile-club-name"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g. CREB Bruxelles"
-                      value={profileForm.clubName}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          clubName: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-elo-bel">
-                      BEL ELO
-                    </label>
-                    <input
-                      id="profile-elo-bel"
-                      type="number"
-                      min={0}
-                      max={3000}
-                      className="filter-input"
-                      value={profileForm.belgianElo}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          belgianElo: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-elo-rapid">
-                      FIDE Rapid
-                    </label>
-                    <input
-                      id="profile-elo-rapid"
-                      type="number"
-                      min={0}
-                      max={3000}
-                      className="filter-input"
-                      value={profileForm.fideRapidElo}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          fideRapidElo: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-elo-std">
-                      FIDE Std
-                    </label>
-                    <input
-                      id="profile-elo-std"
-                      type="number"
-                      min={0}
-                      max={3000}
-                      className="filter-input"
-                      value={profileForm.fideStandardElo}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          fideStandardElo: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="profile-elo-blitz">
-                      FIDE Blitz
-                    </label>
-                    <input
-                      id="profile-elo-blitz"
-                      type="number"
-                      min={0}
-                      max={3000}
-                      className="filter-input"
-                      value={profileForm.fideBlitzElo}
-                      onChange={(e) =>
-                        setProfileForm({
-                          ...profileForm,
-                          fideBlitzElo: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="btn-masthead btn-masthead-primary"
-                  style={{ justifyContent: 'center', padding: '0.65rem', marginTop: '0.4rem' }}
-                >
-                  <UserCheck size={16} />
-                  Save Player Profile & Recalculate Distances
-                </button>
-
-                {profileSavedMsg && (
-                  <p
-                    style={{
-                      fontSize: '0.8rem',
-                      color: 'var(--accent-forest)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {profileSavedMsg}
-                  </p>
-                )}
-              </form>
-            </div>
-
-            {/* Right Column: Live Chess-Results Pairings & Performance */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div className="pairings-card">
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '1rem',
-                  }}
-                >
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem' }}>
-                      Chess-Results Live Tournament Tracker
-                    </h3>
-                    <p style={{ fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
-                      Enter any Belgian Chess-Results Tournament ID (`tnr`) or URL to pull round-by-round pairings, board numbers, and rating performance.
-                    </p>
-                  </div>
-                  <form
-                    onSubmit={handleImportChessResultsTnr}
-                    style={{ display: 'flex', gap: '0.5rem' }}
-                  >
-                    <input
-                      type="text"
-                      className="filter-input"
-                      style={{ width: '175px' }}
-                      placeholder="tnr e.g. 1051904"
-                      value={tnrLookupInput}
-                      onChange={(e) => setTnrLookupInput(e.target.value)}
-                    />
-                    <button
-                      type="submit"
-                      className="btn-status active-registered"
-                      style={{ whiteSpace: 'nowrap' }}
-                    >
-                      Sync tnr Pairings
-                    </button>
-                  </form>
-                </div>
-
-                {/* Quick-Select Bookmarked / Hub Tournament tnr Pills */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    marginTop: '0.75rem',
-                    paddingTop: '0.65rem',
-                    borderTop: '1px solid var(--border-hairline)',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '0.73rem',
-                      color: 'var(--text-muted)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    Quick select hub tnr:
-                  </span>
-                  {tournaments
-                    .filter((t) => Boolean(t.chessResultsTnr))
-                    .slice(0, 5)
-                    .map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className="age-tag"
-                        style={{
-                          cursor: 'pointer',
-                          border:
-                            tnrLookupInput === t.chessResultsTnr
-                              ? '1px solid var(--accent-forest)'
-                              : '1px solid transparent',
-                        }}
-                        onClick={() => setTnrLookupInput(t.chessResultsTnr)}
-                      >
-                        tnr{t.chessResultsTnr} ({t.city})
-                      </button>
-                    ))}
-                </div>
-              </div>
-
-              {playerEntries.map((entry) => (
-                <div key={entry.id} className="pairings-card">
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      marginBottom: '0.5rem',
-                    }}
-                  >
-                    <div>
-                      <span
-                        className="badge badge-circuit"
-                        style={{ marginRight: '0.5rem' }}
-                      >
-                        tnr{entry.chessResultsTnr}
-                      </span>
-                      <span className="badge badge-both">{entry.sectionName}</span>
-                    </div>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.8rem',
-                        color: 'var(--text-secondary)',
-                      }}
-                    >
-                      {entry.date} • {entry.city}
-                    </span>
-                  </div>
-
-                  <h3 style={{ fontSize: '1.12rem', marginBottom: '0.6rem' }}>
-                    {entry.tournamentTitle}
-                  </h3>
-
-                  <div className="card-specs-grid">
-                    <div className="spec-cell">
-                      <span className="spec-label">Score</span>
-                      <span className="spec-value">
-                        {entry.points} / {entry.completedRounds} ({entry.totalRounds}R)
-                      </span>
-                    </div>
-                    <div className="spec-cell">
-                      <span className="spec-label">Standing</span>
-                      <span className="spec-value">
-                        #{entry.currentRank} of {entry.totalPlayers} (Seed #{entry.startingRank})
-                      </span>
-                    </div>
-                    <div className="spec-cell">
-                      <span className="spec-label">Performance (TPR)</span>
-                      <span className="spec-value">{entry.performanceRating} ELO</span>
-                    </div>
-                    <div className="spec-cell">
-                      <span className="spec-label">Rating Gain</span>
-                      <span
-                        className="spec-value"
-                        style={{ color: 'var(--accent-forest)' }}
-                      >
-                        +{entry.eloChange} ELO
-                      </span>
-                    </div>
-                  </div>
-
-                  <table className="pairings-table">
-                    <thead>
-                      <tr>
-                        <th>Rd</th>
-                        <th>Brd</th>
-                        <th>Clr</th>
-                        <th>Opponent</th>
-                        <th>Opponent ELO</th>
-                        <th>Club</th>
-                        <th>Result</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {entry.pairings.map((p) => (
-                        <tr key={p.round}>
-                          <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                            R{p.round}
-                          </td>
-                          <td style={{ fontFamily: 'var(--font-mono)' }}>#{p.board}</td>
-                          <td>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: '3px',
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: '0.73rem',
-                                fontWeight: 700,
-                                background: p.color === 'W' ? '#f8fafc' : '#1e293b',
-                                color: p.color === 'W' ? '#0f172a' : '#f8fafc',
-                                border: '1px solid #94a3b8',
-                              }}
-                            >
-                              {p.color === 'W' ? 'White' : 'Black'}
-                            </span>
-                          </td>
-                          <td style={{ fontWeight: 600 }}>{p.opponentName}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)' }}>
-                            {p.opponentElo}
-                          </td>
-                          <td>{p.opponentClub}</td>
-                          <td
-                            style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontWeight: 700,
-                              color:
-                                p.pointsForPlayer === 1
-                                  ? 'var(--accent-forest)'
-                                  : p.pointsForPlayer === 0.5
-                                  ? 'var(--accent-amber)'
-                                  : 'var(--text-secondary)',
-                            }}
-                          >
-                            {p.result}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
 
         {/* TAB 4: BELGIAN DATA SOURCES & SYNC LOGS */}
@@ -2166,7 +1414,7 @@ export default function BelgianChessHubPage() {
                 marginBottom: '1rem',
               }}
             >
-              Enter details from a local club flyer or Chess-Results page. It will automatically geocode the Belgian postal code and compute driving distance from {playerProfile.homeCity}.
+              Enter details from a local club flyer or Chess-Results page. It will automatically geocode the Belgian postal code and compute driving distance from Brussels.
             </p>
             <form
               onSubmit={handleCreateCustomTournament}

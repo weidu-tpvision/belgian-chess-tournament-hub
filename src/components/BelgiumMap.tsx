@@ -1,14 +1,16 @@
 'use client';
 
 import React from 'react';
-import { Tournament, PlayerProfile } from '@/db/schema';
+import { Tournament } from '@/db/schema';
 
 interface BelgiumMapProps {
   tournaments: Tournament[];
   selectedTournamentId: string | null;
   onSelectTournament: (t: Tournament) => void;
-  playerProfile: PlayerProfile;
   maxDistanceKm: number;
+  referenceCity?: string;
+  referenceLat?: number;
+  referenceLng?: number;
 }
 
 // Bounding box for Belgium projection onto 800 x 560 canvas
@@ -29,10 +31,12 @@ export default function BelgiumMap({
   tournaments,
   selectedTournamentId,
   onSelectTournament,
-  playerProfile,
   maxDistanceKm,
+  referenceCity = 'Brussels',
+  referenceLat = 50.8466,
+  referenceLng = 4.3528,
 }: BelgiumMapProps) {
-  const homePt = projectCoords(playerProfile.homeLat, playerProfile.homeLng);
+  const homePt = projectCoords(referenceLat, referenceLng);
 
   // Convert maxDistanceKm into approximate SVG radius
   const radiusPx =
@@ -142,7 +146,7 @@ export default function BelgiumMap({
             <circle r="11" className="home-pulse-ring" />
             <circle r="6" className="home-core-dot" />
             <text x="0" y="-14" textAnchor="middle" className="home-label-pill">
-              HOME: {playerProfile.homeCity.toUpperCase()}
+              BASE: {referenceCity.toUpperCase()}
             </text>
           </g>
 
@@ -189,7 +193,7 @@ export default function BelgiumMap({
                   {t.category === 'youth' ? 'Y' : t.category === 'both' ? 'Y+' : 'O'}
                 </text>
                 <title>
-                  {`${t.title} (${t.city}) — ${t.startDate} • ${t.distanceKm} km from ${playerProfile.homeCity}`}
+                  {`${t.title} (${t.city}) — ${t.startDate} • ${t.distanceKm} km from ${referenceCity}`}
                 </title>
               </g>
             );
