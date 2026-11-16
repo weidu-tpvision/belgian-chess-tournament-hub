@@ -3,9 +3,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
+  ChevronDown,
+  ChevronUp,
   Compass,
   Download,
   ExternalLink,
+  Filter,
   MapPin,
   PlusCircle,
   RefreshCw,
@@ -64,6 +67,7 @@ export default function BelgianChessHubPage() {
   const [regionFilter, setRegionFilter] = useState<string>('ALL');
   const [maxDistanceKm, setMaxDistanceKm] = useState<number>(250);
   const [u10OnlyToggle, setU10OnlyToggle] = useState<boolean>(false);
+  const [showFiltersExpanded, setShowFiltersExpanded] = useState<boolean>(false);
 
   // Selected tournament for Map / Details
   const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(
@@ -572,143 +576,299 @@ export default function BelgianChessHubPage() {
         {/* SHARED FILTER BAR FOR TOURNAMENT FINDER & INTERACTIVE MAP */}
         {(activeTab === 'finder' || activeTab === 'map') && (
           <section className="filter-panel" aria-label="Tournament Filters">
-              <div className="filter-grid">
-                <div className="filter-field">
-                  <label className="filter-label" htmlFor="search-input">
-                    Search City, Club, or Tournament
-                  </label>
-                  <input
-                    id="search-input"
-                    type="text"
-                    className="filter-input"
-                    placeholder="e.g., Wavre, Mechelen, JEF, Criterium, Blankenberge..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                <div className="filter-field">
-                  <label className="filter-label" htmlFor="circuit-select">
-                    Circuit / Series
-                  </label>
-                  <select
-                    id="circuit-select"
-                    className="filter-select"
-                    value={circuitFilter}
-                    onChange={(e) => setCircuitFilter(e.target.value)}
-                  >
-                    <option value="ALL">All Belgian Circuits & Opens</option>
-                    <option value="JEF">Circuit JEF (Francophone Youth)</option>
-                    <option value="VSF_YOUTH">Vlaams Jeugdschaakcriterium</option>
-                    <option value="NATIONAL">Belgian National Championship (BJK/CBJ)</option>
-                    <option value="OPEN">Mixed Open Tournaments</option>
-                  </select>
-                </div>
-
-                <div className="filter-field">
-                  <label className="filter-label" htmlFor="tc-select">
-                    Time Control
-                  </label>
-                  <select
-                    id="tc-select"
-                    className="filter-select"
-                    value={timeControlFilter}
-                    onChange={(e) => setTimeControlFilter(e.target.value)}
-                  >
-                    <option value="ALL">All Time Controls</option>
-                    <option value="rapid">Rapid (15m+5s / 25m+10s)</option>
-                    <option value="standard">Classical / Standard (90m+30s)</option>
-                    <option value="blitz">Blitz (3m+2s / 5m+3s)</option>
-                  </select>
-                </div>
-
-                <div className="filter-field">
-                  <label className="filter-label" htmlFor="region-select">
-                    Region
-                  </label>
-                  <select
-                    id="region-select"
-                    className="filter-select"
-                    value={regionFilter}
-                    onChange={(e) => setRegionFilter(e.target.value)}
-                  >
-                    <option value="ALL">All of Belgium</option>
-                    <option value="Brussels">Brussels-Capital</option>
-                    <option value="Flanders">Flanders (VSF)</option>
-                    <option value="Wallonia">Wallonia & East Belgium (FEFB/SVDB)</option>
-                  </select>
-                </div>
-
-                <div className="filter-field">
-                  <label className="filter-label" htmlFor="distance-range">
-                    <span>Max Distance from {playerProfile.homeCity}</span>
-                    <strong>
-                      {maxDistanceKm >= 250 ? 'All Belgium' : `≤ ${maxDistanceKm} km`}
-                    </strong>
-                  </label>
-                  <input
-                    id="distance-range"
-                    type="range"
-                    min={15}
-                    max={250}
-                    step={5}
-                    value={maxDistanceKm}
-                    onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
-              <div className="filter-pills-row">
-                <div className="quick-category-toggles">
-                  <button
-                    type="button"
-                    className={`toggle-chip ${categoryFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setCategoryFilter('all')}
-                  >
-                    All Suitable for {playerAge}yo ({tournaments.length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`toggle-chip ${categoryFilter === 'youth' ? 'active' : ''}`}
-                    onClick={() => setCategoryFilter('youth')}
-                  >
-                    Youth Categories (U8 / U10 / U12 / U14+)
-                  </button>
-                  <button
-                    type="button"
-                    className={`toggle-chip ${categoryFilter === 'both' ? 'active' : ''}`}
-                    onClick={() => setCategoryFilter('both')}
-                  >
-                    Combined Youth + Mixed Open
-                  </button>
-                  <button
-                    type="button"
-                    className={`toggle-chip ${categoryFilter === 'open' ? 'active' : ''}`}
-                    onClick={() => setCategoryFilter('open')}
-                  >
-                    Mixed Open Tournaments
-                  </button>
-                </div>
-
-                <label
+            {!showFiltersExpanded ? (
+              <div
+                id="btn-expand-filters"
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowFiltersExpanded(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShowFiltersExpanded(true);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <div
                   style={{
-                    display: 'inline-flex',
+                    display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'center',
                     gap: '0.45rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={u10OnlyToggle}
-                    onChange={(e) => setU10OnlyToggle(e.target.checked)}
-                  />
-                  Filter by {ageCategoryLabel} & Rating ({playerMaxElo} ELO) Eligibility
-                </label>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      color: 'var(--text-secondary)',
+                      marginRight: '0.25rem',
+                    }}
+                  >
+                    <Filter size={14} />
+                    Criteria:
+                  </span>
+                  {searchQuery.trim() && (
+                    <span className="age-tag highlight-u10">
+                      Search: &ldquo;{searchQuery.trim()}&rdquo;
+                    </span>
+                  )}
+                  <span className="age-tag">
+                    Category:{' '}
+                    {categoryFilter === 'all'
+                      ? `All (${playerAge}yo)`
+                      : categoryFilter === 'youth'
+                      ? 'Youth'
+                      : categoryFilter === 'both'
+                      ? 'Youth + Open'
+                      : 'Mixed Open'}
+                  </span>
+                  <span className="age-tag">
+                    Circuit: {circuitFilter === 'ALL' ? 'All' : circuitFilter}
+                  </span>
+                  <span className="age-tag">
+                    Time:{' '}
+                    {timeControlFilter === 'ALL'
+                      ? 'All'
+                      : timeControlFilter.toUpperCase()}
+                  </span>
+                  <span className="age-tag">
+                    Region: {regionFilter === 'ALL' ? 'All Belgium' : regionFilter}
+                  </span>
+                  <span className="age-tag">
+                    Distance:{' '}
+                    {maxDistanceKm >= 250
+                      ? 'All Belgium'
+                      : `≤ ${maxDistanceKm} km from ${playerProfile.homeCity}`}
+                  </span>
+                  {u10OnlyToggle && (
+                    <span className="age-tag highlight-u10">
+                      {ageCategoryLabel} / {playerMaxElo} ELO Eligible
+                    </span>
+                  )}
+                </div>
+
+                <span
+                  className="btn-status"
+                  style={{ whiteSpace: 'nowrap', pointerEvents: 'none' }}
+                >
+                  Modify Search & Filters
+                  <ChevronDown size={14} />
+                </span>
               </div>
-            </section>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.85rem',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
+                    <Filter size={14} />
+                    Search & Filter Criteria
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {(searchQuery ||
+                      categoryFilter !== 'all' ||
+                      circuitFilter !== 'ALL' ||
+                      timeControlFilter !== 'ALL' ||
+                      regionFilter !== 'ALL' ||
+                      maxDistanceKm < 250 ||
+                      u10OnlyToggle) && (
+                      <button
+                        type="button"
+                        className="btn-status"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setCategoryFilter('all');
+                          setCircuitFilter('ALL');
+                          setTimeControlFilter('ALL');
+                          setRegionFilter('ALL');
+                          setMaxDistanceKm(250);
+                          setU10OnlyToggle(false);
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                    <button
+                      id="btn-collapse-filters"
+                      type="button"
+                      className="btn-status"
+                      onClick={() => setShowFiltersExpanded(false)}
+                    >
+                      Hide Search & Filters
+                      <ChevronUp size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="filter-grid">
+                  <div className="filter-field">
+                    <label className="filter-label" htmlFor="search-input">
+                      Search City, Club, or Tournament
+                    </label>
+                    <input
+                      id="search-input"
+                      type="text"
+                      className="filter-input"
+                      placeholder="e.g., Wavre, Mechelen, JEF, Criterium, Blankenberge..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="filter-field">
+                    <label className="filter-label" htmlFor="circuit-select">
+                      Circuit / Series
+                    </label>
+                    <select
+                      id="circuit-select"
+                      className="filter-select"
+                      value={circuitFilter}
+                      onChange={(e) => setCircuitFilter(e.target.value)}
+                    >
+                      <option value="ALL">All Belgian Circuits & Opens</option>
+                      <option value="JEF">Circuit JEF (Francophone Youth)</option>
+                      <option value="VSF_YOUTH">Vlaams Jeugdschaakcriterium</option>
+                      <option value="NATIONAL">Belgian National Championship (BJK/CBJ)</option>
+                      <option value="OPEN">Mixed Open Tournaments</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-field">
+                    <label className="filter-label" htmlFor="tc-select">
+                      Time Control
+                    </label>
+                    <select
+                      id="tc-select"
+                      className="filter-select"
+                      value={timeControlFilter}
+                      onChange={(e) => setTimeControlFilter(e.target.value)}
+                    >
+                      <option value="ALL">All Time Controls</option>
+                      <option value="rapid">Rapid (15m+5s / 25m+10s)</option>
+                      <option value="standard">Classical / Standard (90m+30s)</option>
+                      <option value="blitz">Blitz (3m+2s / 5m+3s)</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-field">
+                    <label className="filter-label" htmlFor="region-select">
+                      Region
+                    </label>
+                    <select
+                      id="region-select"
+                      className="filter-select"
+                      value={regionFilter}
+                      onChange={(e) => setRegionFilter(e.target.value)}
+                    >
+                      <option value="ALL">All of Belgium</option>
+                      <option value="Brussels">Brussels-Capital</option>
+                      <option value="Flanders">Flanders (VSF)</option>
+                      <option value="Wallonia">Wallonia & East Belgium (FEFB/SVDB)</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-field">
+                    <label className="filter-label" htmlFor="distance-range">
+                      <span>Max Distance from {playerProfile.homeCity}</span>
+                      <strong>
+                        {maxDistanceKm >= 250 ? 'All Belgium' : `≤ ${maxDistanceKm} km`}
+                      </strong>
+                    </label>
+                    <input
+                      id="distance-range"
+                      type="range"
+                      min={15}
+                      max={250}
+                      step={5}
+                      value={maxDistanceKm}
+                      onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div className="filter-pills-row">
+                  <div className="quick-category-toggles">
+                    <button
+                      type="button"
+                      className={`toggle-chip ${categoryFilter === 'all' ? 'active' : ''}`}
+                      onClick={() => setCategoryFilter('all')}
+                    >
+                      All Suitable for {playerAge}yo ({tournaments.length})
+                    </button>
+                    <button
+                      type="button"
+                      className={`toggle-chip ${categoryFilter === 'youth' ? 'active' : ''}`}
+                      onClick={() => setCategoryFilter('youth')}
+                    >
+                      Youth Categories (U8 / U10 / U12 / U14+)
+                    </button>
+                    <button
+                      type="button"
+                      className={`toggle-chip ${categoryFilter === 'both' ? 'active' : ''}`}
+                      onClick={() => setCategoryFilter('both')}
+                    >
+                      Combined Youth + Mixed Open
+                    </button>
+                    <button
+                      type="button"
+                      className={`toggle-chip ${categoryFilter === 'open' ? 'active' : ''}`}
+                      onClick={() => setCategoryFilter('open')}
+                    >
+                      Mixed Open Tournaments
+                    </button>
+                  </div>
+
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={u10OnlyToggle}
+                      onChange={(e) => setU10OnlyToggle(e.target.checked)}
+                    />
+                    Filter by {ageCategoryLabel} & Rating ({playerMaxElo} ELO) Eligibility
+                  </label>
+                </div>
+              </>
+            )}
+          </section>
         )}
 
         {/* TAB 1: TOURNAMENT FINDER */}
