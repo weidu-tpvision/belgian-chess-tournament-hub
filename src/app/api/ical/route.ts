@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllTournamentsEnriched, getPlayerProfile } from '@/db';
+import { getAllTournamentsEnriched } from '@/db';
 
 function formatIcalDate(dateStr: string, endExclusive = false): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
@@ -14,7 +14,6 @@ function formatIcalDate(dateStr: string, endExclusive = false): string {
 
 export async function GET() {
   const tournaments = getAllTournamentsEnriched();
-  const profile = getPlayerProfile();
   const bookmarked = tournaments.filter(
     (t) =>
       t.bookmark &&
@@ -27,7 +26,7 @@ export async function GET() {
     'PRODID:-//Belgian Chess Hub//Youth & Open Schedule//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:${profile.fullName} — Belgian Chess Schedule`,
+    'X-WR-CALNAME:Belgian Chess Tournament Schedule',
   ];
 
   for (const t of bookmarked) {
@@ -36,9 +35,8 @@ export async function GET() {
     const dtStart = formatIcalDate(t.startDate, false);
     const dtEnd = formatIcalDate(t.endDate, true);
     const desc = [
-      `Status: ${t.bookmark?.status.toUpperCase()} (${t.bookmark?.section || 'U10'})`,
-      `Format: ${t.rounds} rounds • ${t.timeControlDetails}`,
-      `Distance from ${profile.homeCity}: ${t.distanceKm} km (~${t.estimatedDriveMinutes} min drive)`,
+      `Status: ${t.bookmark?.status.toUpperCase()} (${t.bookmark?.section || t.ageGroups[0] || 'Open'})`,
+      `Format: ${t.rounds} rounds • ${t.timeControl.toUpperCase()} (${t.timeControlDetails})`,
       `Schedule: ${t.scheduleSummary}`,
       t.bookmark?.notes ? `Notes: ${t.bookmark.notes}` : '',
       `Chess-Results: ${t.chessResultsUrl}`,

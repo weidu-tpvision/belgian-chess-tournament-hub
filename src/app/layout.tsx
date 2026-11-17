@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Belgian Chess Hub — Youth (U10/JEF/Criterium) & Mixed Open Tournament Finder',
+  title: 'Belgian Chess Tournament Hub — Youth & Mixed Open Calendar, Map & Planner',
   description:
-    'Complete aggregator and tournament planner for Belgian chess tournaments across FRBE-KBSB-KSB, Vlaamse Schaakfederatie (Jeugdschaakcriterium), FEFB (Circuit JEF), SVDB, and Chess-Results BEL.',
+    'Complete aggregator, interactive map, and tournament planner for Belgian chess tournaments across FRBE-KBSB-KSB, Vlaamse Schaakfederatie (Jeugdschaakcriterium), FEFB (Circuit JEF), SVDB, and Chess-Results BEL.',
 };
 
 export default function RootLayout({

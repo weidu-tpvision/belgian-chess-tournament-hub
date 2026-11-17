@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {
   Tournament,
@@ -24,43 +25,65 @@ interface DatabaseStore {
   syncLogs: SyncLog[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_JSON_PATH = path.join(DATA_DIR, 'chess-hub-db.json');
+const LOCAL_DATA_DIR = path.join(process.cwd(), 'data');
+const LOCAL_DB_PATH = path.join(LOCAL_DATA_DIR, 'chess-hub-db.json');
+const TMP_DB_PATH = path.join(os.tmpdir(), 'chess-hub-db.json');
+
+let memoryStoreFallback: DatabaseStore | null = null;
+
+function createInitialStore(): DatabaseStore {
+  return {
+    tournaments: INITIAL_TOURNAMENTS,
+    bookmarks: INITIAL_BOOKMARKS,
+    playerProfile: INITIAL_PLAYER_PROFILE,
+    playerEntries: INITIAL_PLAYER_ENTRIES,
+    syncLogs: INITIAL_SYNC_LOGS,
+  };
+}
+
+function resolveReadableDbPath(): string | null {
+  if (fs.existsSync(TMP_DB_PATH)) return TMP_DB_PATH;
+  if (fs.existsSync(LOCAL_DB_PATH)) return LOCAL_DB_PATH;
+  return null;
+}
 
 function ensureStore(): DatabaseStore {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const existingPath = resolveReadableDbPath();
+  if (existingPath) {
+    try {
+      const raw = fs.readFileSync(existingPath, 'utf-8');
+      return JSON.parse(raw) as DatabaseStore;
+    } catch {
+      // Fall through to re-seed
+    }
   }
-  if (!fs.existsSync(DB_JSON_PATH)) {
-    const initial: DatabaseStore = {
-      tournaments: INITIAL_TOURNAMENTS,
-      bookmarks: INITIAL_BOOKMARKS,
-      playerProfile: INITIAL_PLAYER_PROFILE,
-      playerEntries: INITIAL_PLAYER_ENTRIES,
-      syncLogs: INITIAL_SYNC_LOGS,
-    };
-    fs.writeFileSync(DB_JSON_PATH, JSON.stringify(initial, null, 2), 'utf-8');
-    return initial;
+
+  if (memoryStoreFallback) {
+    return memoryStoreFallback;
   }
-  try {
-    const raw = fs.readFileSync(DB_JSON_PATH, 'utf-8');
-    return JSON.parse(raw) as DatabaseStore;
-  } catch {
-    return {
-      tournaments: INITIAL_TOURNAMENTS,
-      bookmarks: INITIAL_BOOKMARKS,
-      playerProfile: INITIAL_PLAYER_PROFILE,
-      playerEntries: INITIAL_PLAYER_ENTRIES,
-      syncLogs: INITIAL_SYNC_LOGS,
-    };
-  }
+
+  const initial = createInitialStore();
+  saveStore(initial);
+  return initial;
 }
 
 function saveStore(store: DatabaseStore): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  memoryStoreFallback = store;
+  try {
+    if (!fs.existsSync(LOCAL_DATA_DIR)) {
+      fs.mkdirSync(LOCAL_DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(store, null, 2), 'utf-8');
+    return;
+  } catch {
+    // Read-only filesystem (e.g., Vercel serverless): fall back to os.tmpdir()
   }
-  fs.writeFileSync(DB_JSON_PATH, JSON.stringify(store, null, 2), 'utf-8');
+
+  try {
+    fs.writeFileSync(TMP_DB_PATH, JSON.stringify(store, null, 2), 'utf-8');
+  } catch {
+    // Keep in memoryStoreFallback if tmpdir is also unavailable
+  }
 }
 
 export function getAllTournamentsEnriched(): Tournament[] {

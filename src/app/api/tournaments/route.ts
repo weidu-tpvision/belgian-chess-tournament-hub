@@ -31,10 +31,22 @@ export async function POST(req: NextRequest) {
       endDate: body.endDate || body.startDate || '2026-12-13',
       rounds: Number(body.rounds) || 7,
       timeControl,
-      timeControlDetails: body.timeControlDetails || '15 min + 5 sec/move',
+      timeControlDetails:
+        body.timeControlDetails ||
+        (timeControl === 'standard'
+          ? 'Standard'
+          : timeControl === 'blitz'
+          ? 'Blitz'
+          : 'Rapid'),
       category,
       circuit,
-      ageGroups: body.ageGroups || ['U10', 'U12', 'Open'],
+      ageGroups:
+        body.ageGroups ||
+        (category === 'youth'
+          ? ['U8', 'U10', 'U12', 'U14', 'U16', 'U20']
+          : category === 'open'
+          ? ['Open']
+          : ['Youth', 'Open']),
       city: loc.city,
       postalCode: loc.postalCode,
       province: loc.province,

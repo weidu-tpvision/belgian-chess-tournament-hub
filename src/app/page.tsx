@@ -13,7 +13,6 @@ import {
   PlusCircle,
   RefreshCw,
   ShieldCheck,
-  Clock,
   Bookmark,
   CheckCircle2,
   AlertTriangle,
@@ -191,18 +190,42 @@ export default function BelgianChessHubPage() {
     section: string = 'Open',
     notes?: string
   ) {
+    const existingBookmark = tournaments.find(
+      (t) => t.id === tournamentId
+    )?.bookmark;
+    const nextSection = section || existingBookmark?.section || 'Open';
+    const nextNotes =
+      notes !== undefined ? notes : existingBookmark?.notes || '';
+
+    // Optimistic UI update
+    setTournaments((prev) =>
+      prev.map((t) =>
+        t.id === tournamentId
+          ? {
+              ...t,
+              bookmark: status
+                ? {
+                    tournamentId,
+                    status,
+                    section: nextSection,
+                    notes: nextNotes,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : null,
+            }
+          : t
+      )
+    );
+
     try {
-      const existingBookmark = tournaments.find(
-        (t) => t.id === tournamentId
-      )?.bookmark;
       const res = await fetch('/api/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tournamentId,
           status,
-          section: section || existingBookmark?.section || 'Open',
-          notes: notes !== undefined ? notes : existingBookmark?.notes || '',
+          section: nextSection,
+          notes: nextNotes,
         }),
       });
       if (res.ok) {
@@ -210,7 +233,7 @@ export default function BelgianChessHubPage() {
         setTournaments(data.tournaments);
       }
     } catch {
-      // Optimistic local fallback
+      // Keep optimistic local update if offline
     }
   }
 
@@ -641,178 +664,223 @@ export default function BelgianChessHubPage() {
         {/* TAB 1: TOURNAMENT FINDER */}
         {activeTab === 'finder' && (
           <div className="tournaments-list-col">
-                {filteredTournaments.map((t) => {
-                  const isSelected = selectedTournament?.id === t.id;
-                  const bStatus = t.bookmark?.status;
+            {filteredTournaments.length === 0 ? (
+              <div
+                className="selected-preview-card"
+                style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}
+              >
+                <h3 style={{ fontSize: '1.15rem', marginBottom: '0.4rem' }}>
+                  No tournaments match your current filters
+                </h3>
+                <p
+                  style={{
+                    fontSize: '0.86rem',
+                    color: 'var(--text-secondary)',
+                    marginBottom: '1rem',
+                  }}
+                >
+                  Try clearing one or more filter criteria or adding a custom club flyer.
+                </p>
+                <button
+                  type="button"
+                  className="btn-status active-registered"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCategoryFilter('all');
+                    setCircuitFilter('ALL');
+                    setTimeControlFilter('ALL');
+                    setRegionFilter('ALL');
+                  }}
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            ) : (
+              filteredTournaments.map((t) => {
+                const isSelected = selectedTournament?.id === t.id;
+                const bStatus = t.bookmark?.status;
 
-                  return (
-                    <article
-                      key={t.id}
-                      id={`tournament-card-${t.id}`}
-                      className={`tournament-card ${isSelected ? 'is-selected' : ''}`}
-                      onClick={() => setSelectedTournamentId(t.id)}
-                    >
-                      <div className="card-top-meta">
-                        <div className="badge-group">
-                          {t.category === 'youth' && (
-                            <span className="badge badge-youth">YOUTH TOURNAMENT</span>
-                          )}
-                          {t.category === 'both' && (
-                            <span className="badge badge-both">YOUTH + MIXED OPEN</span>
-                          )}
-                          {t.category === 'open' && (
-                            <span className="badge badge-open">MIXED OPEN</span>
-                          )}
+                return (
+                  <article
+                    key={t.id}
+                    id={`tournament-card-${t.id}`}
+                    className={`tournament-card ${isSelected ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedTournamentId(t.id)}
+                  >
+                    <div className="card-top-meta">
+                      <div className="badge-group">
+                        {t.category === 'youth' && (
+                          <span className="badge badge-youth">YOUTH TOURNAMENT</span>
+                        )}
+                        {t.category === 'both' && (
+                          <span className="badge badge-both">YOUTH + MIXED OPEN</span>
+                        )}
+                        {t.category === 'open' && (
+                          <span className="badge badge-open">MIXED OPEN</span>
+                        )}
 
-                          {t.circuit !== 'NONE' && (
-                            <span className="badge badge-circuit">
-                              {t.circuit === 'VSF_YOUTH'
-                                ? 'VLAAMS JEUGDCRITERIUM'
-                                : t.circuit === 'JEF'
-                                ? 'CIRCUIT JEF'
-                                : t.circuit === 'NATIONAL'
-                                ? 'BELGIAN CHAMPIONSHIP'
-                                : 'OPEN CIRCUIT'}
-                            </span>
-                          )}
+                        {t.circuit !== 'NONE' && (
+                          <span className="badge badge-circuit">
+                            {t.circuit === 'VSF_YOUTH'
+                              ? 'VLAAMS JEUGDCRITERIUM'
+                              : t.circuit === 'JEF'
+                              ? 'CIRCUIT JEF'
+                              : t.circuit === 'NATIONAL'
+                              ? 'BELGIAN CHAMPIONSHIP'
+                              : 'OPEN CIRCUIT'}
+                          </span>
+                        )}
 
-                          {t.isFideRated && (
-                            <span className="badge badge-fide">FIDE ELO</span>
-                          )}
-                          {t.isNationalRated && !t.isFideRated && (
-                            <span className="badge badge-open">BELGIAN ELO</span>
-                          )}
-                        </div>
-
-                        <span className="distance-pill">
-                          {t.city}
-                        </span>
+                        {t.isFideRated && (
+                          <span className="badge badge-fide">FIDE ELO</span>
+                        )}
+                        {t.isNationalRated && !t.isFideRated && (
+                          <span className="badge badge-open">BELGIAN ELO</span>
+                        )}
                       </div>
 
-                      <h2 className="card-title">{t.title}</h2>
-                      <p className="card-summary">{t.englishSummary}</p>
+                      <span className="distance-pill">
+                        {t.city} • {t.region}
+                      </span>
+                    </div>
 
-                      <div className="card-specs-grid">
-                        <div className="spec-cell">
-                          <span className="spec-label">Date</span>
-                          <span className="spec-value">
-                            {t.startDate === t.endDate
-                              ? t.startDate
-                              : `${t.startDate} → ${t.endDate.slice(5)}`}
-                          </span>
-                        </div>
-                        <div className="spec-cell">
-                          <span className="spec-label">City & Region</span>
-                          <span className="spec-value">
-                            {t.city} ({t.postalCode})
-                          </span>
-                        </div>
-                        <div className="spec-cell">
-                          <span className="spec-label">Format</span>
-                          <span className="spec-value">
-                            {t.rounds}R • {t.timeControl.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="spec-cell">
-                          <span className="spec-label">Time Control</span>
-                          <span className="spec-value">{t.timeControlDetails}</span>
-                        </div>
-                      </div>
+                    <h2 className="card-title">{t.title}</h2>
+                    <p className="card-summary">{t.englishSummary}</p>
 
-                      <div className="age-groups-row">
-                        <span
-                          style={{
-                            fontSize: '0.73rem',
-                            fontWeight: 600,
-                            color: 'var(--text-muted)',
-                            marginRight: '0.2rem',
-                          }}
-                        >
-                          Sections:
-                        </span>
-                        {t.ageGroups.map((ag) => (
-                          <span key={ag} className="age-tag">
-                            {ag}
-                          </span>
-                        ))}
-                        <span
-                          style={{
-                            marginLeft: 'auto',
-                            fontSize: '0.74rem',
-                            color: 'var(--text-muted)',
-                          }}
-                        >
-                          Entry: <strong>{t.entryFee}</strong>
+                    <div className="card-specs-grid">
+                      <div className="spec-cell">
+                        <span className="spec-label">Date</span>
+                        <span className="spec-value">
+                          {t.startDate === t.endDate
+                            ? t.startDate
+                            : `${t.startDate} → ${t.endDate.slice(5)}`}
                         </span>
                       </div>
+                      <div className="spec-cell">
+                        <span className="spec-label">City & Postal</span>
+                        <span className="spec-value">
+                          {t.city} ({t.postalCode})
+                        </span>
+                      </div>
+                      <div className="spec-cell">
+                        <span className="spec-label">Format</span>
+                        <span className="spec-value">
+                          {t.rounds}R • {t.timeControl.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="spec-cell">
+                        <span className="spec-label">Schedule</span>
+                        <span className="spec-value">{t.scheduleSummary}</span>
+                      </div>
+                    </div>
 
-                      <div
-                        className="card-footer-actions"
-                        onClick={(e) => e.stopPropagation()}
+                    <div className="age-groups-row">
+                      <span
+                        style={{
+                          fontSize: '0.73rem',
+                          fontWeight: 600,
+                          color: 'var(--text-muted)',
+                          marginRight: '0.2rem',
+                        }}
                       >
-                        <div className="bookmark-btn-group">
-                          <button
-                            type="button"
-                            className={`btn-status ${
-                              bStatus === 'registered' ? 'active-registered' : ''
-                            }`}
-                            onClick={() =>
-                              handleBookmarkToggle(
-                                t.id,
-                                bStatus === 'registered' ? null : 'registered',
-                                t.bookmark?.section || getDefaultSectionForTournament(t)
-                              )
-                            }
-                          >
-                            <CheckCircle2 size={14} />
-                            {bStatus === 'registered' ? 'Registered' : 'Mark Registered'}
-                          </button>
+                        Sections:
+                      </span>
+                      {t.ageGroups.map((ag) => (
+                        <span key={ag} className="age-tag">
+                          {ag}
+                        </span>
+                      ))}
+                      <span
+                        style={{
+                          marginLeft: 'auto',
+                          fontSize: '0.74rem',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        Entry: <strong>{t.entryFee}</strong>
+                      </span>
+                    </div>
 
-                          <button
-                            type="button"
-                            className={`btn-status ${
-                              bStatus === 'interested' ? 'active-interested' : ''
-                            }`}
-                            onClick={() =>
-                              handleBookmarkToggle(
-                                t.id,
-                                bStatus === 'interested' ? null : 'interested',
-                                t.bookmark?.section || getDefaultSectionForTournament(t)
-                              )
-                            }
-                          >
-                            <Bookmark size={14} />
-                            {bStatus === 'interested' ? 'Interested' : 'Interested'}
-                          </button>
-                        </div>
+                    <div
+                      className="card-footer-actions"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="bookmark-btn-group">
+                        <button
+                          type="button"
+                          className={`btn-status ${
+                            bStatus === 'registered' ? 'active-registered' : ''
+                          }`}
+                          onClick={() =>
+                            handleBookmarkToggle(
+                              t.id,
+                              bStatus === 'registered' ? null : 'registered',
+                              t.bookmark?.section || getDefaultSectionForTournament(t)
+                            )
+                          }
+                        >
+                          <CheckCircle2 size={14} />
+                          {bStatus === 'registered' ? 'Registered' : 'Mark Registered'}
+                        </button>
 
-                        <div className="external-links-group">
-                          {t.chessResultsTnr && (
-                            <a
-                              href={t.chessResultsUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="ext-link"
-                            >
-                              Chess-Results ({t.registeredPlayersCount} players)
-                              <ExternalLink size={12} />
-                            </a>
-                          )}
+                        <button
+                          type="button"
+                          className={`btn-status ${
+                            bStatus === 'interested' ? 'active-interested' : ''
+                          }`}
+                          onClick={() =>
+                            handleBookmarkToggle(
+                              t.id,
+                              bStatus === 'interested' ? null : 'interested',
+                              t.bookmark?.section || getDefaultSectionForTournament(t)
+                            )
+                          }
+                        >
+                          <Bookmark size={14} />
+                          Interested
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn-status"
+                          onClick={() => {
+                            setSelectedTournamentId(t.id);
+                            setActiveTab('map');
+                          }}
+                        >
+                          <MapPin size={14} />
+                          View on Map
+                        </button>
+                      </div>
+
+                      <div className="external-links-group">
+                        {t.chessResultsTnr && (
                           <a
-                            href={t.officialUrl}
+                            href={t.chessResultsUrl}
                             target="_blank"
                             rel="noreferrer"
                             className="ext-link"
                           >
-                            Official Info
+                            Chess-Results ({t.registeredPlayersCount} players)
                             <ExternalLink size={12} />
                           </a>
-                        </div>
+                        )}
+                        <a
+                          href={t.officialUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ext-link"
+                        >
+                          Official Info
+                          <ExternalLink size={12} />
+                        </a>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
         )}
 
         {/* TAB 2: INTERACTIVE MAP */}
@@ -830,13 +898,15 @@ export default function BelgianChessHubPage() {
             </div>
 
             <div>
-              {selectedTournament && (
+              {selectedTournament ? (
                 <div className="selected-preview-card">
                   <div
                     style={{
                       display: 'flex',
+                      flexWrap: 'wrap',
                       justifyContent: 'space-between',
                       alignItems: 'center',
+                      gap: '0.5rem',
                       marginBottom: '0.45rem',
                     }}
                   >
@@ -851,21 +921,49 @@ export default function BelgianChessHubPage() {
                         fontWeight: 700,
                       }}
                     >
-                      Club Matricule #{selectedTournament.clubMatricule}
+                      {selectedTournament.organizerClub} (Club #{selectedTournament.clubMatricule})
                     </span>
                   </div>
-                  <h4 style={{ fontSize: '1.08rem', marginBottom: '0.45rem' }}>
+                  <h4 style={{ fontSize: '1.15rem', marginBottom: '0.4rem' }}>
                     {selectedTournament.title}
                   </h4>
                   <p
                     style={{
-                      fontSize: '0.84rem',
+                      fontSize: '0.85rem',
                       color: 'var(--text-secondary)',
-                      marginBottom: '0.65rem',
+                      marginBottom: '0.75rem',
                     }}
                   >
                     {selectedTournament.englishSummary}
                   </p>
+
+                  <div className="card-specs-grid">
+                    <div className="spec-cell">
+                      <span className="spec-label">Date</span>
+                      <span className="spec-value">
+                        {selectedTournament.startDate === selectedTournament.endDate
+                          ? selectedTournament.startDate
+                          : `${selectedTournament.startDate} → ${selectedTournament.endDate.slice(5)}`}
+                      </span>
+                    </div>
+                    <div className="spec-cell">
+                      <span className="spec-label">City & Region</span>
+                      <span className="spec-value">
+                        {selectedTournament.city} ({selectedTournament.postalCode}) • {selectedTournament.region}
+                      </span>
+                    </div>
+                    <div className="spec-cell">
+                      <span className="spec-label">Format & Entry</span>
+                      <span className="spec-value">
+                        {selectedTournament.rounds}R • {selectedTournament.timeControl.toUpperCase()} • {selectedTournament.entryFee}
+                      </span>
+                    </div>
+                    <div className="spec-cell">
+                      <span className="spec-label">Schedule</span>
+                      <span className="spec-value">{selectedTournament.scheduleSummary}</span>
+                    </div>
+                  </div>
+
                   <p
                     style={{
                       fontSize: '0.82rem',
@@ -879,65 +977,124 @@ export default function BelgianChessHubPage() {
                     />
                     <strong>Venue:</strong> {selectedTournament.venueAddress}
                   </p>
-                  <p
-                    style={{
-                      fontSize: '0.82rem',
-                      color: 'var(--text-secondary)',
-                      marginBottom: '0.6rem',
-                    }}
-                  >
-                    <Clock
-                      size={13}
-                      style={{ display: 'inline', marginRight: '4px' }}
-                    />
-                    <strong>Schedule:</strong> {selectedTournament.scheduleSummary}
-                  </p>
-                  <div
-                    style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--text-muted)',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '0.4rem',
-                      marginTop: '0.5rem',
-                      marginBottom: '0.85rem',
-                    }}
-                  >
-                    <span>Verified Sources:</span>
-                    {selectedTournament.sources.map((s) => (
-                      <span
-                        key={s}
-                        style={{
-                          background: 'var(--bg-subtle)',
-                          padding: '0.1rem 0.45rem',
-                          borderRadius: '4px',
-                          color: 'var(--text-primary)',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {s}
+
+                  <div className="age-groups-row">
+                    <span
+                      style={{
+                        fontSize: '0.73rem',
+                        fontWeight: 600,
+                        color: 'var(--text-muted)',
+                        marginRight: '0.2rem',
+                      }}
+                    >
+                      Sections:
+                    </span>
+                    {selectedTournament.ageGroups.map((ag) => (
+                      <span key={ag} className="age-tag">
+                        {ag}
                       </span>
                     ))}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      className="btn-status active-registered"
-                      onClick={() => setActiveTab('finder')}
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        fontSize: '0.74rem',
+                        color: 'var(--text-muted)',
+                      }}
                     >
-                      <Compass size={14} />
-                      View in Tournament Finder
-                    </button>
-                    <a
-                      href={selectedTournament.officialUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ext-link"
-                    >
-                      Official Info
-                      <ExternalLink size={12} />
-                    </a>
+                      Sources: {selectedTournament.sources.join(' • ')}
+                    </span>
                   </div>
+
+                  <div className="card-footer-actions">
+                    <div className="bookmark-btn-group">
+                      <button
+                        type="button"
+                        className={`btn-status ${
+                          selectedTournament.bookmark?.status === 'registered'
+                            ? 'active-registered'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          handleBookmarkToggle(
+                            selectedTournament.id,
+                            selectedTournament.bookmark?.status === 'registered'
+                              ? null
+                              : 'registered',
+                            selectedTournament.bookmark?.section ||
+                              getDefaultSectionForTournament(selectedTournament)
+                          )
+                        }
+                      >
+                        <CheckCircle2 size={14} />
+                        {selectedTournament.bookmark?.status === 'registered'
+                          ? 'Registered'
+                          : 'Mark Registered'}
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`btn-status ${
+                          selectedTournament.bookmark?.status === 'interested'
+                            ? 'active-interested'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          handleBookmarkToggle(
+                            selectedTournament.id,
+                            selectedTournament.bookmark?.status === 'interested'
+                              ? null
+                              : 'interested',
+                            selectedTournament.bookmark?.section ||
+                              getDefaultSectionForTournament(selectedTournament)
+                          )
+                        }
+                      >
+                        <Bookmark size={14} />
+                        Interested
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-status"
+                        onClick={() => setActiveTab('finder')}
+                      >
+                        <Compass size={14} />
+                        View in Tournament Finder
+                      </button>
+                    </div>
+
+                    <div className="external-links-group">
+                      {selectedTournament.chessResultsTnr && (
+                        <a
+                          href={selectedTournament.chessResultsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ext-link"
+                        >
+                          Chess-Results ({selectedTournament.registeredPlayersCount} players)
+                          <ExternalLink size={12} />
+                        </a>
+                      )}
+                      <a
+                        href={selectedTournament.officialUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ext-link"
+                      >
+                        Official Info
+                        <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="selected-preview-card"
+                  style={{ textAlign: 'center', padding: '2rem 1.5rem' }}
+                >
+                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                    No tournaments match the active filter criteria.
+                  </p>
                 </div>
               )}
             </div>

@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       upsertBookmark({
         tournamentId,
         status,
-        section: section || 'U10',
+        section: section || 'Open',
         notes: notes || '',
         updatedAt: new Date().toISOString(),
       });
