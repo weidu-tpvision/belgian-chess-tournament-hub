@@ -174,6 +174,10 @@ export async function lookupChessResultsTnr(
       const h2 = $('h2').first().text().trim();
       if (h2 && h2.length > 4) {
         liveTitle = h2;
+        const resolvedLoc = resolveBelgianLocation(h2);
+        if (resolvedLoc.postalCode !== '1000' || /bruxelles|brussel|brussels/i.test(h2)) {
+          liveCity = resolvedLoc.city;
+        }
       }
     }
   } catch {
@@ -185,10 +189,10 @@ export async function lookupChessResultsTnr(
     liveTitle ||
     matchedTournament?.title ||
     `Belgian Youth & Open Tournament (tnr${cleanedTnr})`;
-  const city = liveCity || matchedTournament?.city || 'Wavre';
+  const city = liveCity || matchedTournament?.city || 'Namur';
   const date = liveDate || matchedTournament?.startDate || '2026-11-22';
   const timeControl = matchedTournament?.timeControl || 'rapid';
-  const totalRounds = matchedTournament?.rounds || 7;
+  const totalRounds = matchedTournament?.rounds || 9;
 
   // Pick the most appropriate section from the tournament's ageGroups
   let sectionName = `Catégorie ${ageCategory} (Registered)`;

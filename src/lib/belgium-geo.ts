@@ -57,21 +57,28 @@ export const BELGIAN_LOCATIONS: Record<string, BelgianLocation> = {
   '3920': { city: 'Lommel', cityNl: 'Lommel', postalCode: '3920', province: 'Limburg', region: 'Flanders', lat: 51.2305, lng: 5.3135 },
   '4000': { city: 'Liège', cityFr: 'Liège', cityNl: 'Luik', postalCode: '4000', province: 'Liège', region: 'Wallonia', lat: 50.6326, lng: 5.5797 },
   '4100': { city: 'Seraing', cityFr: 'Seraing', postalCode: '4100', province: 'Liège', region: 'Wallonia', lat: 50.5836, lng: 5.5011 },
+  '4160': { city: 'Anthisnes', cityFr: 'Anthisnes', postalCode: '4160', province: 'Liège', region: 'Wallonia', lat: 50.4806, lng: 5.5244 },
   '4500': { city: 'Huy', cityFr: 'Huy', cityNl: 'Hoei', postalCode: '4500', province: 'Liège', region: 'Wallonia', lat: 50.5189, lng: 5.2328 },
   '4700': { city: 'Eupen', cityFr: 'Eupen', postalCode: '4700', province: 'Liège (East Belgium)', region: 'Wallonia', lat: 50.6279, lng: 6.0365 },
   '4720': { city: 'Kelmis', cityFr: 'La Calamine', postalCode: '4720', province: 'Liège (East Belgium)', region: 'Wallonia', lat: 50.7176, lng: 6.0128 },
   '4800': { city: 'Verviers', cityFr: 'Verviers', postalCode: '4800', province: 'Liège', region: 'Wallonia', lat: 50.5891, lng: 5.8624 },
   '5000': { city: 'Namur', cityFr: 'Namur', cityNl: 'Namen', postalCode: '5000', province: 'Namur', region: 'Wallonia', lat: 50.4674, lng: 4.8720 },
+  '5060': { city: 'Sambreville', cityFr: 'Sambreville', postalCode: '5060', province: 'Namur', region: 'Wallonia', lat: 50.4401, lng: 4.6025 },
   '5100': { city: 'Jambes (Namur)', cityFr: 'Jambes', postalCode: '5100', province: 'Namur', region: 'Wallonia', lat: 50.4567, lng: 4.8706 },
   '5500': { city: 'Dinant', cityFr: 'Dinant', postalCode: '5500', province: 'Namur', region: 'Wallonia', lat: 50.2611, lng: 4.9122 },
   '6000': { city: 'Charleroi', cityFr: 'Charleroi', postalCode: '6000', province: 'Hainaut', region: 'Wallonia', lat: 50.4108, lng: 4.4446 },
+  '6150': { city: 'Anderlues', cityFr: 'Anderlues', postalCode: '6150', province: 'Hainaut', region: 'Wallonia', lat: 50.4057, lng: 4.2698 },
   '6700': { city: 'Arlon', cityFr: 'Arlon', cityNl: 'Aarlen', postalCode: '6700', province: 'Luxembourg', region: 'Wallonia', lat: 49.6833, lng: 5.8167 },
   '6800': { city: 'Libramont', cityFr: 'Libramont-Chevigny', postalCode: '6800', province: 'Luxembourg', region: 'Wallonia', lat: 49.9195, lng: 5.3764 },
   '6900': { city: 'Marche-en-Famenne', cityFr: 'Marche-en-Famenne', postalCode: '6900', province: 'Luxembourg', region: 'Wallonia', lat: 50.2268, lng: 5.3442 },
   '7000': { city: 'Mons', cityFr: 'Mons', cityNl: 'Bergen', postalCode: '7000', province: 'Hainaut', region: 'Wallonia', lat: 50.4542, lng: 3.9567 },
   '7100': { city: 'La Louvière', cityFr: 'La Louvière', postalCode: '7100', province: 'Hainaut', region: 'Wallonia', lat: 50.4796, lng: 4.1879 },
+  '7160': { city: 'Chapelle-lez-Herlaimont', cityFr: 'Chapelle-lez-Herlaimont', postalCode: '7160', province: 'Hainaut', region: 'Wallonia', lat: 50.4706, lng: 4.2818 },
+  '7330': { city: 'Saint-Ghislain', cityFr: 'Saint-Ghislain', postalCode: '7330', province: 'Hainaut', region: 'Wallonia', lat: 50.4481, lng: 3.8189 },
+  '7331': { city: 'Baudour (Saint-Ghislain)', cityFr: 'Baudour', postalCode: '7331', province: 'Hainaut', region: 'Wallonia', lat: 50.4851, lng: 3.8342 },
   '7500': { city: 'Tournai', cityFr: 'Tournai', cityNl: 'Doornik', postalCode: '7500', province: 'Hainaut', region: 'Wallonia', lat: 50.6056, lng: 3.3880 },
   '7700': { city: 'Mouscron', cityFr: 'Mouscron', cityNl: 'Moeskroen', postalCode: '7700', province: 'Hainaut', region: 'Wallonia', lat: 50.7446, lng: 3.2064 },
+  '7900': { city: 'Leuze-en-Hainaut', cityFr: 'Leuze-en-Hainaut', postalCode: '7900', province: 'Hainaut', region: 'Wallonia', lat: 50.6006, lng: 3.6219 },
   '8000': { city: 'Bruges', cityFr: 'Bruges', cityNl: 'Brugge', postalCode: '8000', province: 'West Flanders', region: 'Flanders', lat: 51.2093, lng: 3.2247 },
   '8300': { city: 'Knokke-Heist', cityNl: 'Knokke-Heist', postalCode: '8300', province: 'West Flanders', region: 'Flanders', lat: 51.3413, lng: 3.2856 },
   '8370': { city: 'Blankenberge', cityNl: 'Blankenberge', postalCode: '8370', province: 'West Flanders', region: 'Flanders', lat: 51.3131, lng: 3.1322 },
@@ -85,7 +92,10 @@ export const BELGIAN_LOCATIONS: Record<string, BelgianLocation> = {
   '9300': { city: 'Aalst', cityFr: 'Alost', cityNl: 'Aalst', postalCode: '9300', province: 'East Flanders', region: 'Flanders', lat: 50.9378, lng: 4.0409 },
   '9400': { city: 'Ninove', cityNl: 'Ninove', postalCode: '9400', province: 'East Flanders', region: 'Flanders', lat: 50.8384, lng: 4.0226 },
   '9600': { city: 'Ronse', cityFr: 'Renaix', cityNl: 'Ronse', postalCode: '9600', province: 'East Flanders', region: 'Flanders', lat: 50.7458, lng: 3.6006 },
-  '9700': { city: 'Oudenaarde', cityFr: 'Audenarde', cityNl: 'Oudenaarde', postalCode: '9700', province: 'East Flanders', region: 'Flanders', lat: 50.8444, lng: 3.6085 }
+  '9620': { city: 'Zottegem', cityNl: 'Zottegem', postalCode: '9620', province: 'East Flanders', region: 'Flanders', lat: 50.8696, lng: 3.8105 },
+  '9700': { city: 'Oudenaarde', cityFr: 'Audenarde', cityNl: 'Oudenaarde', postalCode: '9700', province: 'East Flanders', region: 'Flanders', lat: 50.8444, lng: 3.6085 },
+  '9880': { city: 'Aalter', cityNl: 'Aalter', postalCode: '9880', province: 'East Flanders', region: 'Flanders', lat: 51.0839, lng: 3.4472 },
+  '9940': { city: 'Ertvelde (Evergem)', cityNl: 'Ertvelde', postalCode: '9940', province: 'East Flanders', region: 'Flanders', lat: 51.1794, lng: 3.7447 }
 };
 
 function resolveByBelgianPostalZone(codeNum: number, postalCode: string, cityHint?: string): BelgianLocation {
@@ -163,11 +173,16 @@ export function resolveBelgianLocation(query: string, cityHint?: string): Belgia
   const lower = cleaned.toLowerCase();
   if (lower.length >= 2) {
     for (const loc of Object.values(BELGIAN_LOCATIONS)) {
+      const cityLower = loc.city.toLowerCase();
+      const frLower = (loc.cityFr || '').toLowerCase();
+      const nlLower = (loc.cityNl || '').toLowerCase();
       if (
-        loc.city.toLowerCase().includes(lower) ||
-        (loc.cityFr && loc.cityFr.toLowerCase().includes(lower)) ||
-        (loc.cityNl && loc.cityNl.toLowerCase().includes(lower)) ||
-        lower.includes(loc.city.toLowerCase())
+        cityLower.includes(lower) ||
+        (frLower && frLower.includes(lower)) ||
+        (nlLower && nlLower.includes(lower)) ||
+        lower.includes(cityLower) ||
+        (frLower && lower.includes(frLower)) ||
+        (nlLower && lower.includes(nlLower))
       ) {
         return loc;
       }

@@ -17,7 +17,10 @@ import {
 } from './seed-data';
 import { calculateHaversineKm, estimateDriveMinutes } from '@/lib/belgium-geo';
 
+const CURRENT_SEED_VERSION = 2;
+
 interface DatabaseStore {
+  seedVersion?: number;
   tournaments: Tournament[];
   bookmarks: UserBookmark[];
   playerProfile: PlayerProfile;
@@ -33,6 +36,7 @@ let memoryStoreFallback: DatabaseStore | null = null;
 
 function createInitialStore(): DatabaseStore {
   return {
+    seedVersion: CURRENT_SEED_VERSION,
     tournaments: INITIAL_TOURNAMENTS,
     bookmarks: INITIAL_BOOKMARKS,
     playerProfile: INITIAL_PLAYER_PROFILE,
@@ -52,13 +56,17 @@ function ensureStore(): DatabaseStore {
   if (existingPath) {
     try {
       const raw = fs.readFileSync(existingPath, 'utf-8');
-      return JSON.parse(raw) as DatabaseStore;
+      const parsed = JSON.parse(raw) as DatabaseStore;
+      if (parsed.seedVersion === CURRENT_SEED_VERSION) {
+        return parsed;
+      }
+      // Re-seed if older unverified seed version is detected on disk
     } catch {
       // Fall through to re-seed
     }
   }
 
-  if (memoryStoreFallback) {
+  if (memoryStoreFallback && memoryStoreFallback.seedVersion === CURRENT_SEED_VERSION) {
     return memoryStoreFallback;
   }
 
