@@ -17,7 +17,7 @@ import {
 } from './seed-data';
 import { calculateHaversineKm, estimateDriveMinutes } from '@/lib/belgium-geo';
 
-const CURRENT_SEED_VERSION = 2;
+const CURRENT_SEED_VERSION = 3;
 
 interface DatabaseStore {
   seedVersion?: number;

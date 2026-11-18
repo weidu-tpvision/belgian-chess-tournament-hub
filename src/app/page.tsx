@@ -565,7 +565,7 @@ export default function BelgianChessHubPage() {
                       id="search-input"
                       type="text"
                       className="filter-input"
-                      placeholder="e.g., Wavre, Mechelen, JEF, Criterium, Blankenberge..."
+                      placeholder="e.g., Namur, Mechelen, JEF, Criterium, Turnhout..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />

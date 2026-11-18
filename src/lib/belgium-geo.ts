@@ -43,6 +43,7 @@ export const BELGIAN_LOCATIONS: Record<string, BelgianLocation> = {
   '2140': { city: 'Borgerhout (Antwerp)', cityNl: 'Borgerhout', postalCode: '2140', province: 'Antwerp', region: 'Flanders', lat: 51.2141, lng: 4.4442 },
   '2500': { city: 'Lier', cityNl: 'Lier', postalCode: '2500', province: 'Antwerp', region: 'Flanders', lat: 51.1312, lng: 4.5704 },
   '2600': { city: 'Berchem (Antwerp)', cityNl: 'Berchem', postalCode: '2600', province: 'Antwerp', region: 'Flanders', lat: 51.1922, lng: 4.4328 },
+  '2640': { city: 'Mortsel', cityNl: 'Mortsel', postalCode: '2640', province: 'Antwerp', region: 'Flanders', lat: 51.1703, lng: 4.4567 },
   '2800': { city: 'Mechelen', cityFr: 'Malines', cityNl: 'Mechelen', postalCode: '2800', province: 'Antwerp', region: 'Flanders', lat: 51.0259, lng: 4.4775 },
   '2930': { city: 'Brasschaat', cityNl: 'Brasschaat', postalCode: '2930', province: 'Antwerp', region: 'Flanders', lat: 51.2925, lng: 4.4918 },
   '2440': { city: 'Geel', cityNl: 'Geel', postalCode: '2440', province: 'Antwerp', region: 'Flanders', lat: 51.1627, lng: 4.9908 },
@@ -94,6 +95,7 @@ export const BELGIAN_LOCATIONS: Record<string, BelgianLocation> = {
   '9600': { city: 'Ronse', cityFr: 'Renaix', cityNl: 'Ronse', postalCode: '9600', province: 'East Flanders', region: 'Flanders', lat: 50.7458, lng: 3.6006 },
   '9620': { city: 'Zottegem', cityNl: 'Zottegem', postalCode: '9620', province: 'East Flanders', region: 'Flanders', lat: 50.8696, lng: 3.8105 },
   '9700': { city: 'Oudenaarde', cityFr: 'Audenarde', cityNl: 'Oudenaarde', postalCode: '9700', province: 'East Flanders', region: 'Flanders', lat: 50.8444, lng: 3.6085 },
+  '9850': { city: 'Landegem (Deinze)', cityNl: 'Landegem', postalCode: '9850', province: 'East Flanders', region: 'Flanders', lat: 51.0569, lng: 3.5853 },
   '9880': { city: 'Aalter', cityNl: 'Aalter', postalCode: '9880', province: 'East Flanders', region: 'Flanders', lat: 51.0839, lng: 3.4472 },
   '9940': { city: 'Ertvelde (Evergem)', cityNl: 'Ertvelde', postalCode: '9940', province: 'East Flanders', region: 'Flanders', lat: 51.1794, lng: 3.7447 }
 };

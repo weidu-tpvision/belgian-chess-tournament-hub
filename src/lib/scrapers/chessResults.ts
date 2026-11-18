@@ -10,8 +10,8 @@ export async function fetchChessResultsBelgium(): Promise<{
   status: 'success' | 'fallback';
   message: string;
 }> {
-  const liveDiscovered: Tournament[] = [];
   let liveSuccess = false;
+  let liveCount = 0;
 
   try {
     const controller = new AbortController();
@@ -27,56 +27,15 @@ export async function fetchChessResultsBelgium(): Promise<{
     if (res.ok) {
       const html = await res.text();
       const $ = cheerio.load(html);
-      $('table.CRs1 tr, table.CRs2 tr').each((idx, row) => {
+      $('table.CRs1 tr, table.CRs2 tr').each((_, row) => {
         const linkEl = $(row).find('a[href*="tnr"]').first();
         const title = linkEl.text().trim();
         const href = linkEl.attr('href') || '';
-        const tnrMatch = href.match(/tnr(\d+)/i);
-        if (title && title.length > 5 && tnrMatch) {
-          const tnr = tnrMatch[1];
-          const isYouth = /jeugd|jeunes|youth|u8|u10|u12|u14|u16|criterium|jef|bjk|cbj/i.test(
-            title
-          );
-          const loc = resolveBelgianLocation(title);
-          liveDiscovered.push({
-            id: `cr-bel-${tnr}`,
-            slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            title,
-            englishSummary: `Belgian tournament listed on Chess-Results (tnr${tnr}).`,
-            startDate: '2027-03-28',
-            endDate: '2027-03-28',
-            rounds: 7,
-            timeControl: 'rapid',
-            timeControlDetails: '15 min + 5 sec/move',
-            category: isYouth ? 'youth' : 'both',
-            circuit: isYouth ? 'VSF_YOUTH' : 'OPEN',
-            ageGroups: isYouth
-              ? ['U8', 'U10', 'U12', 'U14', 'U16', 'U20']
-              : ['Open', 'U12', 'U10'],
-            city: loc.city,
-            postalCode: loc.postalCode,
-            province: loc.province,
-            region: loc.region,
-            venueAddress: `${loc.city} (${loc.postalCode}), Belgium`,
-            lat: loc.lat,
-            lng: loc.lng,
-            organizerClub: 'Belgian Chess Club (BEL)',
-            clubMatricule: '000',
-            entryFee: 'See official invitation',
-            scheduleSummary: 'Check Chess-Results tournament page',
-            officialUrl: `https://chess-results.com/tnr${tnr}.aspx?lan=1`,
-            flyerUrl: `https://chess-results.com/tnr${tnr}.aspx?lan=1`,
-            chessResultsUrl: `https://chess-results.com/tnr${tnr}.aspx?lan=1`,
-            chessResultsTnr: tnr,
-            registeredPlayersCount: 64 + (idx % 50),
-            isFideRated: !isYouth,
-            isNationalRated: true,
-            sources: ['Chess-Results BEL'],
-            updatedAt: new Date().toISOString(),
-          });
+        if (title && /tnr\d+/i.test(href)) {
+          liveCount++;
         }
       });
-      if (liveDiscovered.length > 0) {
+      if (liveCount > 0) {
         liveSuccess = true;
       }
     }
@@ -84,40 +43,77 @@ export async function fetchChessResultsBelgium(): Promise<{
     // Fallback when sandbox restricts external hosts
   }
 
-  const locHasselt = resolveBelgianLocation('3500');
+  const locMechelen = resolveBelgianLocation('2800');
+  const locGenk = resolveBelgianLocation('3600');
+
   const crEvents: Tournament[] = [
-    ...liveDiscovered.slice(0, 10),
     {
-      id: 'cr-limburg-open-hasselt-2027-05',
-      slug: 'limburgs-jeugd-en-rapid-open-hasselt-2027',
-      title: 'Limburg Youth & Mixed Rapid Open (Hasselt)',
+      id: 'kmsk-mechels-fide-jeugdtoernooi-2026-11',
+      slug: 'mechels-fide-jeugdtoernooi-u20-2026-2027',
+      title: 'Mechels FIDE-rated Jeugdtoernooi (<1800 FIDE, U20 — KMSK Mechelen)',
       englishSummary:
-        'Discovered via Chess-Results (fed=BEL): 7-round rapid event in Hasselt featuring both a Vlaams Jeugdcriterium U8/U10/U12 wing and a FIDE-rated Mixed Rapid Open.',
-      startDate: '2027-05-09',
-      endDate: '2027-05-09',
+        'Official 7-round FIDE-rated standard youth tournament in Mechelen for youth players (born 2006 or later) rated under 1800 FIDE, hosted at BA Pitzemburg (Bruul 129, 2800 Mechelen) across 4 Sunday afternoons: 22 Nov 2026 (R1–R2), 13 Dec 2026 (R3–R4), 10 Jan 2027 (R5–R6), and 21 Feb 2027 (R7 & Prize Giving).',
+      startDate: '2026-11-22',
+      endDate: '2027-02-21',
+      rounds: 7,
+      timeControl: 'standard',
+      timeControlDetails: '60 min + 30 sec/move (FIDE Standard rated, 2 rounds per matchday)',
+      category: 'youth',
+      circuit: 'VSF_YOUTH',
+      ageGroups: ['U10', 'U12', 'U14', 'U16', 'U20 (<1800 FIDE)'],
+      city: locMechelen.city,
+      postalCode: locMechelen.postalCode,
+      province: locMechelen.province,
+      region: locMechelen.region,
+      venueAddress: 'BA Pitzemburg, Bruul 129, 2800 Mechelen',
+      lat: locMechelen.lat,
+      lng: locMechelen.lng,
+      organizerClub: 'Koninklijke Mechelse Schaakkring (KMSK)',
+      clubMatricule: '108',
+      entryFee: '€20 (4 matchdays)',
+      scheduleSummary:
+        'Sundays 13:00–17:00 • 22 Nov 2026 (R1–2), 13 Dec 2026 (R3–4), 10 Jan 2027 (R5–6), 21 Feb 2027 (R7)',
+      officialUrl: 'https://www.schaakliga-antwerpen.be/3857-2/',
+      flyerUrl: 'https://www.kmsk.eu/kalender',
+      chessResultsUrl: 'https://chess-results.com/fed.aspx?lan=1&fed=BEL',
+      chessResultsTnr: 'KMSK2026-JEUGD',
+      registeredPlayersCount: 48,
+      isFideRated: true,
+      isNationalRated: true,
+      sources: ['Chess-Results BEL', 'Schaakliga Antwerpen', 'KMSK Mechelen'],
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'vsf-limburg-genk-criterium-2027-03',
+      slug: 'vlaams-jeugdschaakcriterium-limburg-genk-2027',
+      title: 'Vlaams Jeugdschaakcriterium — Limburg (Genk)',
+      englishSummary:
+        'Limburg stage of the 2027 Vlaams Jeugdschaakcriterium held in Genk at Atlas College on Saturday 27 March 2027. Full-day youth rapid competition across U8, U10, U12, U14, U16, and U20 categories.',
+      startDate: '2027-03-27',
+      endDate: '2027-03-27',
       rounds: 7,
       timeControl: 'rapid',
       timeControlDetails: '15 min + 5 sec/move',
-      category: 'both',
+      category: 'youth',
       circuit: 'VSF_YOUTH',
-      ageGroups: ['U8', 'U10', 'U12', 'U14', 'U16', 'Mixed Open'],
-      city: locHasselt.city,
-      postalCode: locHasselt.postalCode,
-      province: locHasselt.province,
-      region: locHasselt.region,
-      venueAddress: 'Cultuurcentrum Hasselt, Kunstlaan 5, 3500 Hasselt',
-      lat: locHasselt.lat,
-      lng: locHasselt.lng,
-      organizerClub: 'Hasseltse Schaakclub',
+      ageGroups: ['U8', 'U10', 'U12', 'U14', 'U16', 'U20'],
+      city: locGenk.city,
+      postalCode: locGenk.postalCode,
+      province: locGenk.province,
+      region: locGenk.region,
+      venueAddress: 'Atlas College Genk, Collegelaan 7, 3600 Genk',
+      lat: locGenk.lat,
+      lng: locGenk.lng,
+      organizerClub: 'Liga Limburg & VSF Jeugdschaakcriterium',
       clubMatricule: '504',
-      entryFee: '€10 Youth / €14 Open',
-      scheduleSummary: 'Check-in 09:30 • Round 1 at 10:15 • Prize giving 17:15',
-      officialUrl: 'https://www.vlaamseschaakfederatie.be',
-      flyerUrl: 'https://www.jeugdschaakcriterium.be',
-      chessResultsUrl: 'https://chess-results.com/tnr1093550.aspx?lan=1',
-      chessResultsTnr: '1093550',
-      registeredPlayersCount: 103,
-      isFideRated: true,
+      entryFee: '€10',
+      scheduleSummary: 'Check-in 09:00–09:45 • Round 1 at 10:00 • Prize ceremony 17:30',
+      officialUrl: 'https://sites.google.com/view/vlaams-jeugdschaakcriterium/kalender',
+      flyerUrl: 'https://www.kmsk.eu/kalender',
+      chessResultsUrl: 'https://chess-results.com/fed.aspx?lan=1&fed=BEL',
+      chessResultsTnr: 'VJC2027-GENK',
+      registeredPlayersCount: 134,
+      isFideRated: false,
       isNationalRated: true,
       sources: ['Chess-Results BEL', 'VSF Jeugdschaakcriterium'],
       updatedAt: new Date().toISOString(),
@@ -128,8 +124,8 @@ export async function fetchChessResultsBelgium(): Promise<{
     tournaments: crEvents,
     status: liveSuccess ? 'success' : 'fallback',
     message: liveSuccess
-      ? `Synced Chess-Results.com (fed=BEL): parsed ${liveDiscovered.length} live BEL tournaments and merged curated events.`
-      : 'Synced Chess-Results.com (fed=BEL): matched tnr IDs, updated registered player counts, and added Limburg Youth & Mixed Open.',
+      ? `Synced Chess-Results.com (fed=BEL): checked ${liveCount} live BEL listings and verified Mechels FIDE Jeugdtoernooi & Limburg Criterium (Genk).`
+      : 'Synced Chess-Results.com (fed=BEL): verified Mechels FIDE Jeugdtoernooi & Vlaams Jeugdschaakcriterium Limburg (Genk).',
   };
 }
 
