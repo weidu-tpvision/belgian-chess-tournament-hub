@@ -8,7 +8,8 @@
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "verify:data": "node scripts/verify-tournaments.mjs",
-    "verify:live": "node scripts/verify-tournaments.mjs --live"
+    "verify:live": "node scripts/verify-tournaments.mjs --live",
+    "sync:tournaments": "node scripts/sync-tournaments.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

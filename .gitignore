@@ -10,6 +10,8 @@ next-env.d.ts
 accuracy-report.md
 accuracy-summary.json
 data-validation-report.md
+sync-report.md
+sync-summary.json
 
 # Home directory dotfiles (since project is rooted at /home/antigravity)
 .bash*

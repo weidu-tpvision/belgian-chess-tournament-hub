@@ -10,15 +10,13 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
 import * as cheerio from 'cheerio';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
-const SEED_DATA_PATH = path.join(ROOT_DIR, 'src', 'db', 'seed-data.ts');
+const CATALOG_PATH = path.join(ROOT_DIR, 'src', 'data', 'tournaments.json');
 
 const VALID_TIME_CONTROLS = new Set(['standard', 'rapid', 'blitz']);
 const VALID_CATEGORIES = new Set(['youth', 'open', 'both']);
@@ -60,32 +58,16 @@ function parseArgs(argv) {
   return args;
 }
 
-function loadSeedTournaments() {
-  const source = fs.readFileSync(SEED_DATA_PATH, 'utf-8');
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022,
-    },
-    fileName: SEED_DATA_PATH,
-  });
-
-  const moduleObj = { exports: {} };
-  const sandbox = {
-    module: moduleObj,
-    exports: moduleObj.exports,
-    require: (specifier) => {
-      if (specifier === './schema') return {};
-      throw new Error(`Unexpected import in seed-data.ts: ${specifier}`);
-    },
-  };
-
-  vm.runInNewContext(transpiled.outputText, sandbox, { filename: SEED_DATA_PATH });
-  const tournaments = moduleObj.exports.INITIAL_TOURNAMENTS;
-  if (!Array.isArray(tournaments)) {
-    throw new Error('INITIAL_TOURNAMENTS export not found or is not an array.');
+function loadCatalog() {
+  const raw = fs.readFileSync(CATALOG_PATH, 'utf-8');
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('src/data/tournaments.json must contain a JSON object.');
   }
-  return tournaments;
+  if (!Array.isArray(parsed.tournaments)) {
+    throw new Error('src/data/tournaments.json must contain a `tournaments` array.');
+  }
+  return parsed;
 }
 
 function isValidIsoDate(dateStr) {
@@ -111,14 +93,29 @@ function isValidHttpUrl(urlStr) {
   }
 }
 
-function validateStatic(tournaments) {
+export function validateStatic(catalog) {
   const errors = [];
   const warnings = [];
   const seenIds = new Set();
   const seenSlugs = new Set();
 
+  if (!Number.isInteger(catalog.seedVersion) || catalog.seedVersion < 1) {
+    errors.push({
+      scope: 'tournaments.json',
+      message: `Invalid \`seedVersion\`: ${catalog.seedVersion} (expected positive integer).`,
+    });
+  }
+
+  if (typeof catalog.lastVerifiedAt !== 'string' || Number.isNaN(Date.parse(catalog.lastVerifiedAt))) {
+    errors.push({
+      scope: 'tournaments.json',
+      message: `Invalid \`lastVerifiedAt\`: "${catalog.lastVerifiedAt}" (expected ISO timestamp).`,
+    });
+  }
+
+  const tournaments = catalog.tournaments;
   if (tournaments.length === 0) {
-    errors.push({ scope: 'seed-data', message: 'INITIAL_TOURNAMENTS must not be empty.' });
+    errors.push({ scope: 'tournaments.json', message: '`tournaments` array must not be empty.' });
     return { errors, warnings };
   }
 
@@ -415,6 +412,7 @@ async function runLiveChecks(tournaments) {
 
 function buildMarkdownReport({
   mode,
+  seedVersion,
   tournamentCount,
   staticErrors,
   staticWarnings,
@@ -430,6 +428,7 @@ function buildMarkdownReport({
   lines.push('');
   lines.push(`- **Status:** ${statusBadge}`);
   lines.push(`- **Mode:** \`${mode}\``);
+  lines.push(`- **Seed Version:** \`v${seedVersion}\``);
   lines.push(`- **Checked at:** ${new Date().toISOString()}`);
   lines.push(`- **Tournaments verified:** ${tournamentCount}`);
   if (liveResult) {
@@ -484,13 +483,15 @@ function buildMarkdownReport({
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const tournaments = loadSeedTournaments();
+  const catalog = loadCatalog();
+  const tournaments = catalog.tournaments;
 
-  const { errors: staticErrors, warnings: staticWarnings } = validateStatic(tournaments);
+  const { errors: staticErrors, warnings: staticWarnings } = validateStatic(catalog);
   const liveResult = args.live ? await runLiveChecks(tournaments) : null;
 
   const report = buildMarkdownReport({
     mode: args.live ? 'static+live' : 'static',
+    seedVersion: catalog.seedVersion,
     tournamentCount: tournaments.length,
     staticErrors,
     staticWarnings,
@@ -505,6 +506,7 @@ async function main() {
 
   const summary = {
     mode: args.live ? 'static+live' : 'static',
+    seedVersion: catalog.seedVersion,
     checkedAt: new Date().toISOString(),
     tournamentCount: tournaments.length,
     staticErrorCount: staticErrors.length,
@@ -524,7 +526,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('Verification script crashed:', err);
-  process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((err) => {
+    console.error('Verification script crashed:', err);
+    process.exitCode = 1;
+  });
+}

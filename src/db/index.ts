@@ -9,6 +9,7 @@ import {
   SyncLog,
 } from './schema';
 import {
+  CURRENT_SEED_VERSION,
   INITIAL_TOURNAMENTS,
   INITIAL_BOOKMARKS,
   INITIAL_PLAYER_PROFILE,
@@ -16,8 +17,6 @@ import {
   INITIAL_SYNC_LOGS,
 } from './seed-data';
 import { calculateHaversineKm, estimateDriveMinutes } from '@/lib/belgium-geo';
-
-const CURRENT_SEED_VERSION = 3;
 
 interface DatabaseStore {
   seedVersion?: number;
