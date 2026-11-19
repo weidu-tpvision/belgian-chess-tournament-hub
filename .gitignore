@@ -6,6 +6,10 @@ out/
 .DS_Store
 .env*.local
 next-env.d.ts
+*.tsbuildinfo
+accuracy-report.md
+accuracy-summary.json
+data-validation-report.md
 
 # Home directory dotfiles (since project is rooted at /home/antigravity)
 .bash*

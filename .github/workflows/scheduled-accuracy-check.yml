@@ -1,0 +1,127 @@
+name: Scheduled — Tournament Accuracy Audit
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC (07:00/08:00 Brussels time)
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: tournament-accuracy-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Live Link & Official Source Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run static + live tournament accuracy check
+        id: verify
+        continue-on-error: true
+        run: |
+          node scripts/verify-tournaments.mjs --live \
+            --report-file accuracy-report.md \
+            --json-file accuracy-summary.json
+
+      - name: Publish audit report to Job Summary
+        if: always() && hashFiles('accuracy-report.md') != ''
+        run: cat accuracy-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create, update, or close accuracy audit issue
+        if: always() && hashFiles('accuracy-summary.json') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const summary = JSON.parse(fs.readFileSync('accuracy-summary.json', 'utf-8'));
+            const report = fs.readFileSync('accuracy-report.md', 'utf-8');
+            const issueTitle = '[Data Accuracy] Belgian Chess Tournament Audit';
+            const labelName = 'data-accuracy';
+
+            // Ensure label exists (ignore if already present)
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: labelName,
+                color: 'd93f0b',
+                description: 'Automated tournament data & link accuracy alerts',
+              });
+            } catch (err) {
+              if (err.status !== 422) {
+                core.info(`Skipping label creation: ${err.message}`);
+              }
+            }
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: labelName,
+              per_page: 20,
+            });
+
+            const existing = openIssues.find((i) => i.title === issueTitle);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const footer = `\n---\n_Automated run: [GitHub Actions Run #${context.runNumber}](${runUrl})_`;
+
+            if (summary.errorCount > 0 || summary.warningCount > 0) {
+              const body = `${report}${footer}`;
+              if (existing) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existing.number,
+                  body,
+                });
+                core.info(`Updated existing audit issue #${existing.number}.`);
+              } else {
+                const { data: created } = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: issueTitle,
+                  labels: [labelName],
+                  body,
+                });
+                core.info(`Created new audit issue #${created.number}.`);
+              }
+            } else if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `✅ Latest scheduled accuracy audit passed with **0 errors** and **0 warnings**. Closing this issue automatically.${footer}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+              core.info(`Closed resolved audit issue #${existing.number}.`);
+            } else {
+              core.info('All checks passed and no open audit issue exists.');
+            }
+
+      - name: Fail job if hard errors were detected
+        if: steps.verify.outcome == 'failure'
+        run: |
+          echo "Tournament accuracy audit detected hard errors (static validation failure or HTTP 404/410 dead links). See Job Summary or Issue for details."
+          exit 1

@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start -p 3000"
+    "start": "next start -p 3000",
+    "typecheck": "tsc --noEmit",
+    "verify:data": "node scripts/verify-tournaments.mjs",
+    "verify:live": "node scripts/verify-tournaments.mjs --live"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
