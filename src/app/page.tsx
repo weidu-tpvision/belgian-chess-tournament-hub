@@ -4,18 +4,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Compass,
   Download,
   ExternalLink,
-  Filter,
   MapPin,
   PlusCircle,
   RefreshCw,
+  Search,
   ShieldCheck,
+  SlidersHorizontal,
   Bookmark,
   CheckCircle2,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import BelgiumMap from '@/components/BelgiumMap';
 import {
@@ -29,6 +33,29 @@ import {
 } from '@/db/seed-data';
 
 type ActiveTab = 'finder' | 'map' | 'schedule' | 'sources';
+
+function formatReadableDate(iso: string): string {
+  const parts = iso.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return iso;
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  return date.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function formatDateRange(startDate: string, endDate: string): string {
+  if (!endDate || startDate === endDate) return formatReadableDate(startDate);
+  const s = startDate.split('-');
+  const e = endDate.split('-');
+  if (s.length === 3 && e.length === 3 && s[0] === e[0] && s[1] === e[1]) {
+    const startDay = Number(s[2]);
+    return `${startDay}–${formatReadableDate(endDate)}`;
+  }
+  return `${formatReadableDate(startDate)} → ${formatReadableDate(endDate)}`;
+}
 
 function getNextUpcomingTournamentId(list: Tournament[]): string | null {
   if (list.length === 0) return null;
@@ -154,6 +181,44 @@ export default function BelgianChessHubPage() {
       filteredTournaments[0]
     );
   }, [filteredTournaments, selectedTournamentId]);
+
+  const sameCityTournaments = useMemo(() => {
+    if (!selectedTournament) return [];
+    return filteredTournaments
+      .filter(
+        (t) =>
+          t.city === selectedTournament.city &&
+          t.lat.toFixed(2) === selectedTournament.lat.toFixed(2) &&
+          t.lng.toFixed(2) === selectedTournament.lng.toFixed(2)
+      )
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  }, [filteredTournaments, selectedTournament]);
+
+  const selectedIndex = useMemo(() => {
+    if (!selectedTournament) return -1;
+    return filteredTournaments.findIndex((t) => t.id === selectedTournament.id);
+  }, [filteredTournaments, selectedTournament]);
+
+  const activeAdvancedFilterCount = useMemo(() => {
+    let count = 0;
+    if (circuitFilter !== 'ALL') count++;
+    if (timeControlFilter !== 'ALL') count++;
+    if (regionFilter !== 'ALL') count++;
+    return count;
+  }, [circuitFilter, timeControlFilter, regionFilter]);
+
+  const hasAnyFilter =
+    Boolean(searchQuery.trim()) ||
+    categoryFilter !== 'all' ||
+    activeAdvancedFilterCount > 0;
+
+  function handleResetFilters() {
+    setSearchQuery('');
+    setCategoryFilter('all');
+    setCircuitFilter('ALL');
+    setTimeControlFilter('ALL');
+    setRegionFilter('ALL');
+  }
 
   const bookmarkedTournaments = useMemo(() => {
     return tournaments.filter(
@@ -417,160 +482,90 @@ export default function BelgianChessHubPage() {
         {/* SHARED FILTER BAR FOR TOURNAMENT FINDER & INTERACTIVE MAP */}
         {(activeTab === 'finder' || activeTab === 'map') && (
           <section className="filter-panel" aria-label="Tournament Filters">
-            {!showFiltersExpanded ? (
-              <div
-                id="btn-expand-filters"
-                role="button"
-                tabIndex={0}
-                onClick={() => setShowFiltersExpanded(true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setShowFiltersExpanded(true);
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                  }}
-                >
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      color: 'var(--text-secondary)',
-                      marginRight: '0.25rem',
-                    }}
+            <div className="filter-toolbar-primary">
+              <div className="search-input-wrap">
+                <Search size={15} className="search-input-icon" aria-hidden="true" />
+                <input
+                  id="search-input"
+                  type="text"
+                  className="filter-input search-input-with-icon"
+                  placeholder="Search city, club, or tournament (e.g., Mechelen, Namur, JEF)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="search-clear-btn"
+                    aria-label="Clear search"
+                    onClick={() => setSearchQuery('')}
                   >
-                    <Filter size={14} />
-                    Criteria:
-                  </span>
-                  {searchQuery.trim() && (
-                    <span className="age-tag highlight-u10">
-                      Search: &ldquo;{searchQuery.trim()}&rdquo;
-                    </span>
-                  )}
-                  <span className="age-tag">
-                    Category:{' '}
-                    {categoryFilter === 'all'
-                      ? 'All Categories'
-                      : categoryFilter === 'youth'
-                      ? 'Youth'
-                      : categoryFilter === 'both'
-                      ? 'Youth + Open'
-                      : 'Mixed Open'}
-                  </span>
-                  <span className="age-tag">
-                    Circuit: {circuitFilter === 'ALL' ? 'All' : circuitFilter}
-                  </span>
-                  <span className="age-tag">
-                    Time:{' '}
-                    {timeControlFilter === 'ALL'
-                      ? 'All'
-                      : timeControlFilter.toUpperCase()}
-                  </span>
-                  <span className="age-tag">
-                    Region: {regionFilter === 'ALL' ? 'All Belgium' : regionFilter}
-                  </span>
-                </div>
-
-                <span
-                  className="btn-status"
-                  style={{ whiteSpace: 'nowrap', pointerEvents: 'none' }}
-                >
-                  Modify Search & Filters
-                  <ChevronDown size={14} />
-                </span>
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-            ) : (
-              <>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.85rem',
-                  }}
+
+              <div className="quick-category-toggles" role="group" aria-label="Category filter">
+                <button
+                  type="button"
+                  className={`toggle-chip ${categoryFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setCategoryFilter('all')}
                 >
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      color: 'var(--text-secondary)',
-                    }}
+                  All ({tournaments.length})
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-chip ${categoryFilter === 'youth' ? 'active' : ''}`}
+                  onClick={() => setCategoryFilter('youth')}
+                >
+                  Youth
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-chip ${categoryFilter === 'both' ? 'active' : ''}`}
+                  onClick={() => setCategoryFilter('both')}
+                >
+                  Youth + Open
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-chip ${categoryFilter === 'open' ? 'active' : ''}`}
+                  onClick={() => setCategoryFilter('open')}
+                >
+                  Mixed Open
+                </button>
+              </div>
+
+              <div className="filter-toolbar-actions">
+                <button
+                  id={showFiltersExpanded ? 'btn-collapse-filters' : 'btn-expand-filters'}
+                  type="button"
+                  className={`btn-status ${showFiltersExpanded || activeAdvancedFilterCount > 0 ? 'btn-filter-active' : ''}`}
+                  onClick={() => setShowFiltersExpanded((prev) => !prev)}
+                >
+                  <SlidersHorizontal size={14} />
+                  Filters
+                  {activeAdvancedFilterCount > 0 && (
+                    <span className="filter-count-badge">{activeAdvancedFilterCount}</span>
+                  )}
+                  {showFiltersExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+
+                {hasAnyFilter && (
+                  <button
+                    type="button"
+                    className="btn-status btn-reset-subtle"
+                    onClick={handleResetFilters}
                   >
-                    <Filter size={14} />
-                    Search & Filter Criteria
-                  </span>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {(searchQuery ||
-                      categoryFilter !== 'all' ||
-                      circuitFilter !== 'ALL' ||
-                      timeControlFilter !== 'ALL' ||
-                      regionFilter !== 'ALL') && (
-                      <button
-                        type="button"
-                        className="btn-status"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setCategoryFilter('all');
-                          setCircuitFilter('ALL');
-                          setTimeControlFilter('ALL');
-                          setRegionFilter('ALL');
-                        }}
-                      >
-                        Reset
-                      </button>
-                    )}
-                    <button
-                      id="btn-collapse-filters"
-                      type="button"
-                      className="btn-status"
-                      onClick={() => setShowFiltersExpanded(false)}
-                    >
-                      Hide Search & Filters
-                      <ChevronUp size={14} />
-                    </button>
-                  </div>
-                </div>
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
 
-                <div className="filter-grid">
-                  <div className="filter-field">
-                    <label className="filter-label" htmlFor="search-input">
-                      Search City, Club, or Tournament
-                    </label>
-                    <input
-                      id="search-input"
-                      type="text"
-                      className="filter-input"
-                      placeholder="e.g., Namur, Mechelen, JEF, Criterium, Turnhout..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-
+            {showFiltersExpanded && (
+              <div className="filter-advanced-drawer">
+                <div className="filter-grid filter-grid-3">
                   <div className="filter-field">
                     <label className="filter-label" htmlFor="circuit-select">
                       Circuit / Series
@@ -623,40 +618,7 @@ export default function BelgianChessHubPage() {
                     </select>
                   </div>
                 </div>
-
-                <div className="filter-pills-row">
-                  <div className="quick-category-toggles">
-                    <button
-                      type="button"
-                      className={`toggle-chip ${categoryFilter === 'all' ? 'active' : ''}`}
-                      onClick={() => setCategoryFilter('all')}
-                    >
-                      All Categories ({tournaments.length})
-                    </button>
-                    <button
-                      type="button"
-                      className={`toggle-chip ${categoryFilter === 'youth' ? 'active' : ''}`}
-                      onClick={() => setCategoryFilter('youth')}
-                    >
-                      Youth Categories (U8 / U10 / U12 / U14+)
-                    </button>
-                    <button
-                      type="button"
-                      className={`toggle-chip ${categoryFilter === 'both' ? 'active' : ''}`}
-                      onClick={() => setCategoryFilter('both')}
-                    >
-                      Combined Youth + Mixed Open
-                    </button>
-                    <button
-                      type="button"
-                      className={`toggle-chip ${categoryFilter === 'open' ? 'active' : ''}`}
-                      onClick={() => setCategoryFilter('open')}
-                    >
-                      Mixed Open Tournaments
-                    </button>
-                  </div>
-                </div>
-              </>
+              </div>
             )}
           </section>
         )}
@@ -751,9 +713,7 @@ export default function BelgianChessHubPage() {
                       <div className="spec-cell">
                         <span className="spec-label">Date</span>
                         <span className="spec-value">
-                          {t.startDate === t.endDate
-                            ? t.startDate
-                            : `${t.startDate} → ${t.endDate.slice(5)}`}
+                          {formatDateRange(t.startDate, t.endDate)}
                         </span>
                       </div>
                       <div className="spec-cell">
@@ -886,10 +846,10 @@ export default function BelgianChessHubPage() {
         {/* TAB 2: INTERACTIVE MAP */}
         {activeTab === 'map' && (
           <section
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+            className="map-workspace-grid"
             aria-label="Interactive Tournament Map"
           >
-            <div>
+            <div className="map-canvas-col">
               <BelgiumMap
                 tournaments={filteredTournaments}
                 selectedTournamentId={selectedTournament?.id || null}
@@ -897,115 +857,168 @@ export default function BelgianChessHubPage() {
               />
             </div>
 
-            <div>
+            <aside className="map-inspector-col" aria-label="Selected tournament details">
               {selectedTournament ? (
-                <div className="selected-preview-card">
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      marginBottom: '0.45rem',
-                    }}
-                  >
-                    <span className="map-eyebrow">
-                      SELECTED TOURNAMENT LOGISTICS
-                    </span>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '0.74rem',
-                        color: 'var(--accent-forest)',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {selectedTournament.organizerClub} (Club #{selectedTournament.clubMatricule})
-                    </span>
+                <div className="selected-preview-card map-inspector-card">
+                  {/* Inspector Top Bar: Eyebrow + Prev/Next Navigation */}
+                  <div className="inspector-top-bar">
+                    <div>
+                      <span className="map-eyebrow">SELECTED LOCATION</span>
+                      <div className="inspector-city-heading">
+                        <MapPin size={14} />
+                        <span>
+                          {selectedTournament.city} ({selectedTournament.postalCode})
+                        </span>
+                        <span className="inspector-region-pill">
+                          {selectedTournament.region}
+                        </span>
+                      </div>
+                    </div>
+
+                    {filteredTournaments.length > 1 && (
+                      <div className="inspector-pager" aria-label="Browse events">
+                        <button
+                          type="button"
+                          className="map-icon-btn"
+                          title="Previous tournament"
+                          aria-label="Previous tournament"
+                          onClick={() => {
+                            const prevIdx =
+                              (selectedIndex - 1 + filteredTournaments.length) %
+                              filteredTournaments.length;
+                            setSelectedTournamentId(filteredTournaments[prevIdx].id);
+                          }}
+                        >
+                          <ChevronLeft size={14} />
+                        </button>
+                        <span className="inspector-pager-count">
+                          {selectedIndex + 1} / {filteredTournaments.length}
+                        </span>
+                        <button
+                          type="button"
+                          className="map-icon-btn"
+                          title="Next tournament"
+                          aria-label="Next tournament"
+                          onClick={() => {
+                            const nextIdx =
+                              (selectedIndex + 1) % filteredTournaments.length;
+                            setSelectedTournamentId(filteredTournaments[nextIdx].id);
+                          }}
+                        >
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <h4 style={{ fontSize: '1.15rem', marginBottom: '0.4rem' }}>
-                    {selectedTournament.title}
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: '0.85rem',
-                      color: 'var(--text-secondary)',
-                      marginBottom: '0.75rem',
-                    }}
-                  >
+
+                  {/* Same-City Multi-Event Switcher (e.g., Mechelen has 3 events) */}
+                  {sameCityTournaments.length > 1 && (
+                    <div className="city-events-switcher">
+                      <div className="city-events-switcher-header">
+                        {sameCityTournaments.length} events in {selectedTournament.city}
+                      </div>
+                      <div className="city-events-list">
+                        {sameCityTournaments.map((evt) => {
+                          const isCurrent = evt.id === selectedTournament.id;
+                          return (
+                            <button
+                              key={evt.id}
+                              type="button"
+                              className={`city-event-item ${isCurrent ? 'active' : ''}`}
+                              onClick={() => setSelectedTournamentId(evt.id)}
+                            >
+                              <span className="city-event-date">
+                                {formatDateRange(evt.startDate, evt.endDate)}
+                              </span>
+                              <span className="city-event-title">{evt.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Badges */}
+                  <div className="badge-group" style={{ marginBottom: '0.6rem' }}>
+                    {selectedTournament.category === 'youth' && (
+                      <span className="badge badge-youth">YOUTH</span>
+                    )}
+                    {selectedTournament.category === 'both' && (
+                      <span className="badge badge-both">YOUTH + OPEN</span>
+                    )}
+                    {selectedTournament.category === 'open' && (
+                      <span className="badge badge-open">MIXED OPEN</span>
+                    )}
+                    {selectedTournament.isFideRated && (
+                      <span className="badge badge-fide">FIDE ELO</span>
+                    )}
+                    {selectedTournament.circuit !== 'NONE' && (
+                      <span className="badge badge-circuit">
+                        {selectedTournament.circuit === 'VSF_YOUTH'
+                          ? 'VSF CRITERIUM'
+                          : selectedTournament.circuit === 'JEF'
+                          ? 'CIRCUIT JEF'
+                          : selectedTournament.circuit === 'NATIONAL'
+                          ? 'NATIONAL'
+                          : 'OPEN'}
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="inspector-title">{selectedTournament.title}</h4>
+                  <p className="inspector-summary">
                     {selectedTournament.englishSummary}
                   </p>
 
-                  <div className="card-specs-grid">
+                  <div className="card-specs-grid inspector-specs-grid">
                     <div className="spec-cell">
                       <span className="spec-label">Date</span>
                       <span className="spec-value">
-                        {selectedTournament.startDate === selectedTournament.endDate
-                          ? selectedTournament.startDate
-                          : `${selectedTournament.startDate} → ${selectedTournament.endDate.slice(5)}`}
-                      </span>
-                    </div>
-                    <div className="spec-cell">
-                      <span className="spec-label">City & Region</span>
-                      <span className="spec-value">
-                        {selectedTournament.city} ({selectedTournament.postalCode}) • {selectedTournament.region}
+                        {formatDateRange(
+                          selectedTournament.startDate,
+                          selectedTournament.endDate
+                        )}
                       </span>
                     </div>
                     <div className="spec-cell">
                       <span className="spec-label">Format & Entry</span>
                       <span className="spec-value">
-                        {selectedTournament.rounds}R • {selectedTournament.timeControl.toUpperCase()} • {selectedTournament.entryFee}
+                        {selectedTournament.rounds}R •{' '}
+                        {selectedTournament.timeControl.toUpperCase()} •{' '}
+                        {selectedTournament.entryFee}
                       </span>
                     </div>
                     <div className="spec-cell">
                       <span className="spec-label">Schedule</span>
-                      <span className="spec-value">{selectedTournament.scheduleSummary}</span>
+                      <span className="spec-value">
+                        {selectedTournament.scheduleSummary}
+                      </span>
+                    </div>
+                    <div className="spec-cell">
+                      <span className="spec-label">Organizer</span>
+                      <span className="spec-value">
+                        {selectedTournament.organizerClub} (#{selectedTournament.clubMatricule})
+                      </span>
                     </div>
                   </div>
 
-                  <p
-                    style={{
-                      fontSize: '0.82rem',
-                      color: 'var(--text-secondary)',
-                      marginBottom: '0.5rem',
-                    }}
-                  >
-                    <MapPin
-                      size={13}
-                      style={{ display: 'inline', marginRight: '4px' }}
-                    />
-                    <strong>Venue:</strong> {selectedTournament.venueAddress}
+                  <p className="inspector-venue">
+                    <MapPin size={13} />
+                    <span>
+                      <strong>Venue:</strong> {selectedTournament.venueAddress}
+                    </span>
                   </p>
 
                   <div className="age-groups-row">
-                    <span
-                      style={{
-                        fontSize: '0.73rem',
-                        fontWeight: 600,
-                        color: 'var(--text-muted)',
-                        marginRight: '0.2rem',
-                      }}
-                    >
-                      Sections:
-                    </span>
+                    <span className="sections-label">Sections:</span>
                     {selectedTournament.ageGroups.map((ag) => (
                       <span key={ag} className="age-tag">
                         {ag}
                       </span>
                     ))}
-                    <span
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: '0.74rem',
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      Sources: {selectedTournament.sources.join(' • ')}
-                    </span>
                   </div>
 
-                  <div className="card-footer-actions">
+                  <div className="inspector-actions-stack">
                     <div className="bookmark-btn-group">
                       <button
                         type="button"
@@ -1052,15 +1065,6 @@ export default function BelgianChessHubPage() {
                         <Bookmark size={14} />
                         Interested
                       </button>
-
-                      <button
-                        type="button"
-                        className="btn-status"
-                        onClick={() => setActiveTab('finder')}
-                      >
-                        <Compass size={14} />
-                        View in Tournament Finder
-                      </button>
                     </div>
 
                     <div className="external-links-group">
@@ -1071,7 +1075,7 @@ export default function BelgianChessHubPage() {
                           rel="noreferrer"
                           className="ext-link"
                         >
-                          Chess-Results ({selectedTournament.registeredPlayersCount} players)
+                          Chess-Results ({selectedTournament.registeredPlayersCount})
                           <ExternalLink size={12} />
                         </a>
                       )}
@@ -1084,20 +1088,43 @@ export default function BelgianChessHubPage() {
                         Official Info
                         <ExternalLink size={12} />
                       </a>
+                      <button
+                        type="button"
+                        className="btn-status"
+                        onClick={() => setActiveTab('finder')}
+                      >
+                        <Compass size={13} />
+                        Finder
+                      </button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div
                   className="selected-preview-card"
-                  style={{ textAlign: 'center', padding: '2rem 1.5rem' }}
+                  style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}
                 >
-                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                  <p
+                    style={{
+                      fontSize: '0.9rem',
+                      color: 'var(--text-secondary)',
+                      marginBottom: '1rem',
+                    }}
+                  >
                     No tournaments match the active filter criteria.
                   </p>
+                  {hasAnyFilter && (
+                    <button
+                      type="button"
+                      className="btn-status active-registered"
+                      onClick={handleResetFilters}
+                    >
+                      Reset Filters
+                    </button>
+                  )}
                 </div>
               )}
-            </div>
+            </aside>
           </section>
         )}
 
@@ -1160,6 +1187,19 @@ export default function BelgianChessHubPage() {
                 </h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                  {bookmarkedTournaments.filter((t) => t.bookmark?.status === 'registered').length === 0 && (
+                    <div className="empty-schedule-box">
+                      <p>No confirmed registrations yet.</p>
+                      <button
+                        type="button"
+                        className="btn-status"
+                        onClick={() => setActiveTab('map')}
+                      >
+                        <MapPin size={14} />
+                        Explore Map to Register
+                      </button>
+                    </div>
+                  )}
                   {bookmarkedTournaments
                     .filter((t) => t.bookmark?.status === 'registered')
                     .map((t) => (
@@ -1331,6 +1371,19 @@ export default function BelgianChessHubPage() {
                 </h3>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                  {bookmarkedTournaments.filter((t) => t.bookmark?.status === 'interested').length === 0 && (
+                    <div className="empty-schedule-box">
+                      <p>No shortlisted tournaments yet.</p>
+                      <button
+                        type="button"
+                        className="btn-status"
+                        onClick={() => setActiveTab('finder')}
+                      >
+                        <Compass size={14} />
+                        Browse Tournament Finder
+                      </button>
+                    </div>
+                  )}
                   {bookmarkedTournaments
                     .filter((t) => t.bookmark?.status === 'interested')
                     .map((t) => (
