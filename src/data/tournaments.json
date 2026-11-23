@@ -1,6 +1,6 @@
 {
-  "seedVersion": 3,
-  "lastVerifiedAt": "2026-11-19T23:25:33.553Z",
+  "seedVersion": 4,
+  "lastVerifiedAt": "2026-11-23T17:31:59.422Z",
   "tournaments": [
     {
       "id": "frbe-bk-blitz-chess960-lier-2026-11",
@@ -641,7 +641,7 @@
       "flyerUrl": "https://sites.google.com/view/brugsemeestersbe",
       "chessResultsUrl": "https://chess-results.com/tnr1445745.aspx?lan=1",
       "chessResultsTnr": "1445745",
-      "registeredPlayersCount": 168,
+      "registeredPlayersCount": 150,
       "isFideRated": true,
       "isNationalRated": true,
       "sources": [
@@ -649,7 +649,7 @@
         "KBSK Brugge",
         "Chess-Results BEL"
       ],
-      "updatedAt": "2026-11-18T12:00:00Z"
+      "updatedAt": "2026-11-23T17:31:58.902Z"
     }
   ]
 }
